@@ -61,6 +61,8 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
 	    "    (call-process-region (point-min) (point-max)\n"
 	    "    \""fun"\" t t)\n"
 	    "    (buffer-string)))\n\n"
+	    "(advice-add '" (file-name-base fun)
+	    " :before (lambda (x) \"Haskell function\" x))\n\n"
 	    )) funs)
       (eval-buffer))))
 
