@@ -50,26 +50,27 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
     (with-temp-buffer
       (mapc
        (lambda (fun)
-	 (when (file-regular-p fun)
-	   (insert
-	    "(defun " (file-name-base fun) " (string)\n"
-	    "  \""(file-name-base fun)" is a haskell-function which is feeded\n"
-	    "with a STRING which is piped to "
-	    (if (file-exists-p (concat fun ".hs"))
-		(concat
-		 "this program:\n\n"
-		 (with-temp-buffer
-		   (insert-file-contents (concat fun ".hs"))
-		   (buffer-string)))
-	      "a binary.") "\""
-	      "  (with-temp-buffer\n"
-	      "    (insert string)\n"
-	      "    (call-process-region (point-min) (point-max)\n"
-	      "    \""fun"\" t t)\n"
-	      "    (buffer-string)))\n\n"
-	      "(advice-add '" (file-name-base fun)
-	      " :before (lambda (x) \"Haskell function\" x))\n\n"
-	      ))) funs)
+         (when (file-regular-p fun)
+           (insert
+            "(defun " (file-name-base fun) " (string)\n"
+            "  \""(file-name-base fun)" is a haskell-function which is feeded\n"
+            "with a STRING which is piped to "
+            (if (file-exists-p (concat fun ".hs"))
+                (concat
+                 "this program:\n\n"
+                 (with-temp-buffer
+                   (insert-file-contents (concat fun ".hs"))
+                   (substring (format "%S" (buffer-string)) 1 -1)))
+              "a binary.\n") "\"\n"
+              "  (with-temp-buffer\n"
+              "    (insert string)\n"
+              "    (call-process-region (point-min) (point-max)\n"
+              "    \""fun"\" t t)\n"
+              "    (buffer-string)))\n\n"
+              "(advice-add '" (file-name-base fun)
+              " :before (lambda (x) \"Haskell function\" x))\n\n"
+              ))) funs)
+      (setq h-e-i-DEBUG (buffer-string))
       (eval-buffer))))
 
 (provide 'haskell-emacs)
