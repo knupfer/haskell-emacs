@@ -30,6 +30,12 @@
 ;; already defined at that moment is getting overridden.  It can be
 ;; used to piece-wise replace builtins or extend emacs.
 
+;;; Usage:
+
+;; Put this file into your load path and put (require 'haskell-emacs)
+;; and (haskell-emacs-init) into your .emacs.  Afterwards just
+;; populate your `haskell-emacs-dir' with code.
+
 ;;; Code:
 
 (defvar haskell-emacs-dir "~/.emacs.d/haskell-fun/")
