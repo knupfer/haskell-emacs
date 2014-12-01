@@ -30,7 +30,6 @@
 ;; already defined at that moment is getting overridden.  It can be
 ;; used to piece-wise replace builtins or extend emacs.
 
-
 ;;; Code:
 
 (defvar haskell-emacs-dir "~/.emacs.d/haskell-fun/")
@@ -51,7 +50,7 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
 	  "with a STRING which is piped to "
 	  (if (file-exists-p (concat fun ".hs"))
 	      (concat
-	       "following program:\n\n\n"
+	       "this program:\n\n"
 	       (with-temp-buffer
 		 (insert-file-contents (concat fun ".hs"))
 		 (buffer-string)))
