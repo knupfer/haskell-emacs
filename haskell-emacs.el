@@ -52,9 +52,10 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
        (lambda (fun)
          (when (file-regular-p fun)
            (insert
-            "(defun " (file-name-base fun) " (string)\n"
-            "  \""(file-name-base fun)" is a haskell-function which is feeded\n"
-            "with a STRING which is piped to "
+            "(defun " (file-name-base fun) " (&optional string &rest args)\n"
+            "  \""(file-name-base fun)
+	    " is a haskell-function which is started with ARGS\n"
+            "and feeded with a STRING which is piped to "
             (if (file-exists-p (concat fun ".hs"))
                 (concat
                  "this program:\n\n"
@@ -63,14 +64,13 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
                    (substring (format "%S" (buffer-string)) 1 -1)))
               "a binary.\n") "\"\n"
               "  (with-temp-buffer\n"
-              "    (insert string)\n"
-              "    (call-process-region (point-min) (point-max)\n"
-              "    \""fun"\" t t)\n"
+              "    (when string (insert string))\n"
+              "    (apply 'call-process-region (point-min) (point-max)\n"
+              "      \""fun"\" t t nil args)\n"
               "    (buffer-string)))\n\n"
               "(advice-add '" (file-name-base fun)
-              " :before (lambda (x) \"Haskell function\" x))\n\n"
+              " :before (lambda (&optional x &rest args) \"Haskell function\"))\n\n"
               ))) funs)
-      (setq h-e-i-DEBUG (buffer-string))
       (eval-buffer))))
 
 (provide 'haskell-emacs)
