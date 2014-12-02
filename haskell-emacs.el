@@ -47,31 +47,30 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
   (unless (file-directory-p haskell-emacs-dir)
     (make-directory haskell-emacs-dir t))
   (let ((funs (directory-files haskell-emacs-dir t "^[^.]+$")))
-    (with-temp-buffer
-      (mapc
-       (lambda (fun)
-         (when (file-regular-p fun)
-           (insert
-            "(defun " (file-name-base fun) " (&optional string &rest args)\n"
-            "  \""(file-name-base fun)
-	    " is a haskell-function which is started with ARGS\n"
-            "and feeded with a STRING which is piped to "
-            (if (file-exists-p (concat fun ".hs"))
-                (concat
-                 "this program:\n\n"
-                 (with-temp-buffer
-                   (insert-file-contents (concat fun ".hs"))
-                   (substring (format "%S" (buffer-string)) 1 -1)))
-              "a binary.\n") "\"\n"
-              "  (with-temp-buffer\n"
-              "    (when string (insert string))\n"
-              "    (apply 'call-process-region (point-min) (point-max)\n"
-              "      \""fun"\" t t nil args)\n"
-              "    (buffer-string)))\n\n"
-              "(advice-add '" (file-name-base fun)
-              " :before (lambda (&optional x &rest args) \"Haskell function\"))\n\n"
-              ))) funs)
-      (eval-buffer))))
+    (mapc (lambda (fun) (when (file-regular-p fun)
+                          (eval (haskell-emacs--load-fun fun)))) funs)))
+
+(defun haskell-emacs--load-fun (fun)
+  "Take FUN and return a wrapper in elisp."
+  `(progn
+     (defun ,(car (read-from-string (file-name-base fun)))
+         (&optional string &rest args)
+       ,(concat (file-name-base fun)
+                " is a haskell-function which is started with ARGS
+and feeded with a STRING which is piped to "
+                (if (file-exists-p (concat fun ".hs"))
+                    (concat
+                     "this program:\n\n"
+                     (with-temp-buffer
+                       (insert-file-contents (concat fun ".hs"))
+                       (substring (format "%S" (buffer-string)) 1 -1)))
+                  "a binary."))
+       (with-temp-buffer
+         (when string (insert string))
+         (apply 'call-process-region (point-min) (point-max) ,fun t t nil args)
+         (buffer-string)))
+     (advice-add ',(car (read-from-string (file-name-base fun))) :before
+                 (lambda (&optional string &rest args) "Haskell function"))))
 
 (provide 'haskell-emacs)
 
