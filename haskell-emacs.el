@@ -48,9 +48,9 @@ When `haskell-emacs-dir' doesn't exist, it will be created."
     (make-directory haskell-emacs-dir t))
   (let ((funs (directory-files haskell-emacs-dir t "^[^.]+$")))
     (mapc (lambda (fun) (when (file-regular-p fun)
-                          (eval (haskell-emacs--load-fun fun)))) funs)))
+                          (eval (haskell-emacs--wrapper-fun fun)))) funs)))
 
-(defun haskell-emacs--load-fun (fun)
+(defun haskell-emacs--wrapper-fun (fun)
   "Take FUN and return a wrapper in elisp."
   `(progn
      (defun ,(car (read-from-string (file-name-base fun)))
@@ -67,7 +67,8 @@ and feeded with a STRING which is piped to "
                   "a binary."))
        (with-temp-buffer
          (when string (insert string))
-         (apply 'call-process-region (point-min) (point-max) ,fun t t nil args)
+         (apply (function call-process-region) (point-min) (point-max)
+                ,fun t t nil args)
          (buffer-string)))
      (advice-add ',(car (read-from-string (file-name-base fun))) :before
                  (lambda (&optional string &rest args) "Haskell function"))))
