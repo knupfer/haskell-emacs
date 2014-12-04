@@ -29,12 +29,48 @@
 ;; take place with `haskell-emacs-init', so every function, which is
 ;; already defined at that moment is getting overridden.  It can be
 ;; used to piece-wise replace builtins or extend emacs.
+;;
+;; Every wrapper function receives an async version with '-async'
+;; simply appended to the function name.  The async function will
+;; return its result into `haskell-emacs--hash-table'.  To retrieve
+;; the result, simply eval the expression which is returned by the
+;; async function (if the result isn't already calculated, emacs will
+;; wait for it, so it's safe to eval the expression at any time).
+;; Alternatively, call the non-async counterpart of the function with
+;; the same arguments, if the result is already calculated, it will be
+;; picked from the hash-table, if it is not ready, emacs will block
+;; and retrieve.
 
 ;;; Usage:
 
 ;; Put this file into your load path and put (require 'haskell-emacs)
 ;; and (haskell-emacs-init) into your .emacs.  Afterwards just
 ;; populate your `haskell-emacs-dir' with code.
+
+;;; Example:
+
+;; Put a haskell function in your `haskell-emacs-dir':
+;;
+;; -- /home/foo/.emacs.d/haskell-fun/vocalToUpper.hs ----------------------
+;; import Data.Char (toUpper)
+;;
+;; main :: IO ()
+;; main = interact $ map (\c -> if c `elem` "aeiou" then toUpper c else c)
+;; ------------------------------------------------------------------------
+;;
+
+;; Now compile your code: ghc -O2 vocalToUpper And now start your
+;; emacs, require haskell-emacs and run haskell-emacs-init (preferably
+;; put this stuff in your .emacs file to avoid these steps).
+;;
+;; And now try M-: (vocalToUpper "abcdefgh!") afterwards you can look
+;; up your result in the hash-table, if the code is rerun, it will be
+;; catched from the hash-table.
+;; Now try something like:
+
+;; (let (result (vocalToUpper-async (buffer-string)))
+;;   ... some heavy computation ...
+;;   (insert (eval result)))
 
 ;;; Code:
 
