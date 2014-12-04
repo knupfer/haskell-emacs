@@ -57,17 +57,21 @@
 ;; main :: IO ()
 ;; main = interact $ map (\c -> if c `elem` "aeiou" then toUpper c else c)
 ;; ------------------------------------------------------------------------
-;;
 
-;; Now compile your code: ghc -O2 vocalToUpper And now start your
-;; emacs, require haskell-emacs and run haskell-emacs-init (preferably
-;; put this stuff in your .emacs file to avoid these steps).
+;; Now compile your code:
+;;
+;; ghc -O2 vocalToUpper
+
+;; And now start your emacs, require haskell-emacs and run
+;; haskell-emacs-init (preferably put this stuff in your .emacs file
+;; to avoid these steps).
 ;;
 ;; And now try M-: (vocalToUpper "abcdefgh!") afterwards you can look
 ;; up your result in the hash-table, if the code is rerun, it will be
 ;; catched from the hash-table.
-;; Now try something like:
 
+;; Now try something like:
+;;
 ;; (let (result (vocalToUpper-async (buffer-string)))
 ;;   ... some heavy computation ...
 ;;   (insert (eval result)))
@@ -79,7 +83,22 @@
 
 (defun haskell-emacs-init ()
   "Generate function wrappers from `haskell-emacs-dir'.
-When `haskell-emacs-dir' doesn't exist, it will be created."
+When `haskell-emacs-dir' doesn't exist, it will be created.
+
+It produces normal function and async functions.  The functions
+are supposed to be funcitonal, so don't depend on os-state and
+don't modify os-state in your haskell programm.  The result of
+the functions will be stored in a global hash-table, so every
+computation with the same function and same arguments will be
+simply looked-up in the hash-table (this is *very* fast).
+
+To use the async versions of the functions, simply call them and
+eval the returning expression later when you need the result.
+Alternatively, you can run the non-async version of the same
+function with the same arguments to retrieve the result from the
+hash-table if it's already there, if not, Emacs will wait for
+termination of the calculation.  Therefor it's perfect safe to
+use a lot of async processes."
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (make-directory haskell-emacs-dir t))
