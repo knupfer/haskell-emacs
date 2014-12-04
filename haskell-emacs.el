@@ -39,6 +39,7 @@
 ;;; Code:
 
 (defvar haskell-emacs-dir "~/.emacs.d/haskell-fun/")
+(defvar haskell-emacs--hash-table (make-hash-table))
 
 (defun haskell-emacs-init ()
   "Generate function wrappers from `haskell-emacs-dir'.
@@ -65,11 +66,15 @@ and feeded with a STRING which is piped to "
                        (insert-file-contents (concat fun ".hs"))
                        (substring (format "%S" (buffer-string)) 1 -1)))
                   "a binary."))
-       (with-temp-buffer
-         (when string (insert string))
-         (apply (function call-process-region) (point-min) (point-max)
-                ,fun t t nil args)
-         (buffer-string)))
+       (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
+              (value (gethash hash haskell-emacs--hash-table)))
+         (if value
+             value
+           (with-temp-buffer
+             (when string (insert string))
+             (apply (function call-process-region) (point-min) (point-max)
+                    ,fun t t nil args)
+             (puthash hash (buffer-string) haskell-emacs--hash-table)))))
      (advice-add ',(car (read-from-string (file-name-base fun))) :before
                  (lambda (&optional string &rest args) "Haskell function"))))
 
