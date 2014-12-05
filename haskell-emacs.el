@@ -62,9 +62,9 @@
 ;;
 ;; ghc -O2 vocalToUpper
 
-;; And now start your emacs, require haskell-emacs and run
-;; haskell-emacs-init (preferably put this stuff in your .emacs file
-;; to avoid these steps).
+;; Start your emacs, require haskell-emacs and run haskell-emacs-init
+;; (preferably put this stuff in your .emacs file to avoid these
+;; steps).
 ;;
 ;; And now try M-: (vocalToUpper "abcdefgh!") afterwards you can look
 ;; up your result in the hash-table, if the code is rerun, it will be
@@ -122,20 +122,20 @@ persists an entire emacs session.\n\n")
                              (fill-region (point-min) (point-max)))
                            (buffer-string))
          (when (file-exists-p (concat fun ".hs"))
-           (concat
-            "The source of this function is:\n\n"
-            (with-temp-buffer
-              (insert-file-contents (concat fun ".hs"))
-              (substring (format "%S" (buffer-string)) 1 -1)))))
+           (concat "The source of this function is:\n\n"
+                   (with-temp-buffer
+                     (insert-file-contents (concat fun ".hs"))
+                     (substring (format "%S" (buffer-string)) 1 -1)))))
        (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
               (value (gethash hash haskell-emacs--hash-table)))
-         (if value
-             (eval value)
+         (if value (eval value)
            (with-temp-buffer
              (when string (insert string))
              (apply (function call-process-region) (point-min) (point-max)
                     ,fun t t nil args)
              (puthash hash (buffer-string) haskell-emacs--hash-table)))))
+     (advice-add ',(car (read-from-string (file-name-base fun))) :before
+                 (lambda (&optional string &rest args) "Haskell function"))
      (defun ,(car (read-from-string (concat (file-name-base fun) "-async")))
          (&optional string &rest args)
        ,(concat (with-temp-buffer
@@ -152,11 +152,10 @@ expression to retrieve the result sync.\n\n")
                     (fill-region (point-min) (point-max)))
                   (buffer-string))
                 (when (file-exists-p (concat fun ".hs"))
-                  (concat
-                   "The source of this function is:\n\n"
-                   (with-temp-buffer
-                     (insert-file-contents (concat fun ".hs"))
-                     (substring (format "%S" (buffer-string)) 1 -1)))))
+                  (concat "The source of this function is:\n\n"
+                          (with-temp-buffer
+                            (insert-file-contents (concat fun ".hs"))
+                            (substring (format "%S" (buffer-string)) 1 -1)))))
        (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
               (value (gethash hash haskell-emacs--hash-table))
               (process-connection-type nil))
