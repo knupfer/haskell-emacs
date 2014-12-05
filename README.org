@@ -1,0 +1,38 @@
+* What is it?
+=haskell-emacs= is a library which tries to allow extensions of emacs
+to be in haskell.  It provides an interface with haskell functions,
+which can be run from emacs in a synchronous and in an asynchronous
+manner.
+
+* Details
+On running =haskell-emacs-init=, every haskell program which is in
+customizeable directory (the default is =~/.emacs.d/haskell-fun/= will
+get a wrapper to call it with a emacs function.  This function
+receives optionl an input string and arguments and returns the result
+into a hash-table and to the user.  If the same function with the same
+arguments is called again, it will use the result from the hash-table
+to speed up things.
+
+If one uses the async version of a function ("-async" is appended to
+the function name), a expression is returned which can be evaluated to
+get (and wait for if necessary) the result.  If the non-async version
+is called while the async function calculates the result, the
+non-async version will be aware of the calculation and simply block
+emacs and wait for the result from the async process.
+
+* Shortcommings
+At least at the moment, the cache from the hash-table doesn't expire,
+so if you use a lot haskell functions which return big objects (like
+huge buffer-strings) a lot of memory will be consumed.
+
+Functions only accept strings as input, so if you want to use
+arithemtic stuff, you have to convert it afterwards back to a number.
+
+Some overhead is required to pipe your input, start the programm etc,
+so for very trivial use cases, emacs inbuilds are faster.
+
+=haskell-emacs= considers every haskell program as pure, it happily
+assumes that your program spits out the same result with the same
+arguments.  If this is not the case, be aware that the result is
+cached: each haskell program with the same arguments gets executed at
+most one time.
