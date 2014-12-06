@@ -161,7 +161,7 @@ expression to retrieve the result sync.\n\n")
               (process-connection-type nil))
          (unless value
            (unless string (setq string ""))
-           (let ((pr (start-process (number-to-string hash) nil ,fun)))
+           (let ((pr (start-process ,fun nil ,fun)))
              (eval `(puthash hash
                              '(progn (accept-process-output ,pr)
                                      (gethash ,hash haskell-emacs--hash-table))
