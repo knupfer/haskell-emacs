@@ -125,7 +125,7 @@ persists an entire emacs session.\n\n")
            (concat "The source of this function is:\n\n"
                    (with-temp-buffer
                      (insert-file-contents (concat fun ".hs"))
-                     (substring (format "%S" (buffer-string)) 1 -1)))))
+                     (buffer-string)))))
        (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
               (value (gethash hash haskell-emacs--hash-table)))
          (if value (eval value)
@@ -154,7 +154,7 @@ expression to retrieve the result sync.\n\n")
                   (concat "The source of this function is:\n\n"
                           (with-temp-buffer
                             (insert-file-contents (concat fun ".hs"))
-                            (substring (format "%S" (buffer-string)) 1 -1)))))
+                            (buffer-string)))))
        (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
               (value (gethash hash haskell-emacs--hash-table)))
          (unless value
