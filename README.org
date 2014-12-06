@@ -4,6 +4,71 @@ to be in haskell.  It provides an interface with haskell functions,
 which can be run from emacs in a synchronous and in an asynchronous
 manner.
 
+* Examples
+Consider that you've got the following toy haskell-program:
+
+#+BEGIN_EXAMPLE haskell
+-- /home/foo/.emacs.d/haskell-fun/digitSum.hs
+import Data.Char (digitToInt)
+
+main :: IO ()
+main = interact $ show . sum . map digitToInt
+#+END_EXAMPLE
+
+Now compile it
+#+BEGIN_EXAMPLE
+ghc -O2 digitSum
+#+END_EXAMPLE
+
+Start your emacs and evaluate following expression:
+#+BEGIN_EXAMPLE elisp
+(require 'haskell-emacs)
+(haskell-emacs-init)
+#+END_EXAMPLE
+
+Now you're set to toy around with your new elisp functions:
+#+BEGIN_EXAMPLE elisp
+(digitSum 74)
+ => "11"
+#+END_EXAMPLE
+
+Now consider you want to do some heavy async work:
+#+BEGIN_EXAMPLE elisp
+(setq my-Data nil)
+(while (< (length my-Data) 10000)
+  (add-to-list 'my-Data (random 1000000000)))
+
+(let ((multi-core-computation (mapcar 'digitSum-async my-Data)))
+  (setq my-Result (mapcar 'eval multi-core-computation)))
+#+END_EXAMPLE
+
+First, we have created a big list of random numbers, afterwards we
+calculate with multiple cores simultaneously the map of our function
+over our data and finaly we retrieve and wait for the result by
+calling eval and store it.
+
+Alternatively, you can call
+#+BEGIN_EXAMPLE elisp
+(setq my-Result (mapcar 'eval (mapcar 'digitSum-async my-Data)))
+#+END_EXAMPLE
+
+It would be wise to run the async calculation as soon as you've got
+the required input for the function and retrieve the output as late as
+possible, in this way, not only your async processes will be executed
+in parallel, but also your elisp code in parallel to your haskell
+function.
+
+#+BEGIN_EXAMPLE elisp
+(let ((multi (mapcar 'digitSum-async my-Data)))
+  ;; ... do your other elisp stuff here ...
+  (apply '+ (mapcar (lambda (n) (string-to-number (eval n))) multi)))
+#+END_EXAMPLE
+
+Perhaps you have noticed: already the second map of =digitSum= on your
+=my-Data= is vastly faster, this is due to result caching.  If you
+want to make the entire computation, you have to fill your =my-data=
+with other random numbers.
+
 * Details
 On running =haskell-emacs-init=, every haskell program which is in a
 customizeable directory (the default is =~/.emacs.d/haskell-fun/= will
@@ -25,8 +90,8 @@ At least at the moment, the cache from the hash-table doesn't expire,
 so if you use a lot haskell functions which return big objects (like
 huge buffer-strings) a lot of memory will be consumed.
 
-Functions only accept strings as input, so if you want to use
-arithmetic stuff, you have to convert it afterwards back to a number.
+Functions only return strings, so if you expect a number to be
+returned, you have to convert the result yourself.
 
 Some overhead is required to pipe your input, start the programm etc,
 so for very trivial use cases, emacs inbuilds are faster.
