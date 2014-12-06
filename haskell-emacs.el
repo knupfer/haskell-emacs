@@ -110,7 +110,7 @@ use a lot of async processes."
 (defun haskell-emacs--wrapper-fun (fun)
   "Take FUN and return a wrapper in elisp."
   `(progn
-     (defun ,(car (read-from-string (file-name-base fun)))
+     (defun ,(intern (file-name-base fun))
          (&optional object &rest args)
        ,(concat
          (with-temp-buffer (insert (file-name-base fun)
@@ -141,8 +141,8 @@ persists an entire emacs session.\n\n")
                (puthash hash `(error ,(buffer-string))
                         haskell-emacs--hash-table)
                (error (buffer-string)))))))
-     (byte-compile ',(car (read-from-string (file-name-base fun))))
-     (defun ,(car (read-from-string (concat (file-name-base fun) "-async")))
+     (byte-compile ',(intern (file-name-base fun)))
+     (defun ,(intern (concat (file-name-base fun) "-async"))
          (&optional object &rest args)
        ,(concat (with-temp-buffer
                   (insert (file-name-base fun) "-async"
@@ -193,8 +193,8 @@ expression to retrieve the result sync.\n\n")
                (process-send-string pr object)
                (process-send-eof pr))))
          `(eval (gethash ,hash haskell-emacs--hash-table))))
-     (byte-compile ',(car (read-from-string
-                           (concat (file-name-base fun) "-async"))))))
+     (byte-compile ',(intern
+                      (concat (file-name-base fun) "-async")))))
 
 (provide 'haskell-emacs)
 
