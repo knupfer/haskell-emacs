@@ -134,8 +134,7 @@ persists an entire emacs session.\n\n")
              (apply (function call-process-region) (point-min) (point-max)
                     ,fun t t nil args)
              (puthash hash (buffer-string) haskell-emacs--hash-table)))))
-     (advice-add ',(car (read-from-string (file-name-base fun))) :before
-                 (lambda (&optional string &rest args) "Haskell function"))
+     (byte-compile ',(car (read-from-string (file-name-base fun))))
      (defun ,(car (read-from-string (concat (file-name-base fun) "-async")))
          (&optional string &rest args)
        ,(concat (with-temp-buffer
@@ -173,10 +172,8 @@ expression to retrieve the result sync.\n\n")
              (process-send-string pr string)
              (process-send-eof pr)))
          `(eval (gethash ,hash haskell-emacs--hash-table))))
-     (advice-add ',(car (read-from-string
-                         (concat (file-name-base fun) "-async"))) :before
-                         (lambda (&optional string &rest args)
-                           "Asynchronous Haskell function"))))
+     (byte-compile ',(car (read-from-string
+                           (concat (file-name-base fun) "-async"))))))
 
 (provide 'haskell-emacs)
 
