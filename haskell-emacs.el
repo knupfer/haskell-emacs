@@ -80,6 +80,7 @@
 
 (defvar haskell-emacs-dir "~/.emacs.d/haskell-fun/")
 (defvar haskell-emacs--hash-table (make-hash-table))
+(defvar haskell-emacs--number-of-cores 32)
 
 (defun haskell-emacs-init ()
   "Generate function wrappers from `haskell-emacs-dir'.
@@ -162,6 +163,8 @@ expression to retrieve the result sync.\n\n")
        (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
               (value (gethash hash haskell-emacs--hash-table)))
          (unless value
+           (while (<= haskell-emacs--number-of-cores (length (process-list)))
+             (accept-process-output))
            (let ((process-connection-type nil))
              (unless string (setq string ""))
              (let ((pr (apply (function start-process)
