@@ -111,11 +111,11 @@ use a lot of async processes."
   "Take FUN and return a wrapper in elisp."
   `(progn
      (defun ,(car (read-from-string (file-name-base fun)))
-         (&optional string &rest args)
+         (&optional object &rest args)
        ,(concat
          (with-temp-buffer (insert (file-name-base fun)
                                    " is a haskell-function which
-is started with ARGS and STRING as stdin.  The result is
+is started with ARGS and OBJECT as stdin.  The result is
 considered functional and therefore saved in a hash-tabel to
 speed up repeated calls with the same arguments.  The hash-tabel
 persists an entire emacs session.\n\n")
@@ -127,11 +127,13 @@ persists an entire emacs session.\n\n")
                    (with-temp-buffer
                      (insert-file-contents (concat fun ".hs"))
                      (buffer-string)))))
-       (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
+       (setq object (format "%s" object))
+       (setq args (mapcar (lambda (x) (format "%s" x)) args))
+       (let* ((hash (sxhash (list ,(file-name-base fun) object args)))
               (value (gethash hash haskell-emacs--hash-table)))
          (if value (eval value)
            (with-temp-buffer
-             (when string (insert string))
+             (when object (insert object))
              (if (equal 0 (apply (function call-process-region) (point-min)
                                  (point-max) ,fun t t nil args))
                  (puthash hash (buffer-string) haskell-emacs--hash-table)
@@ -141,11 +143,11 @@ persists an entire emacs session.\n\n")
                (error (buffer-string)))))))
      (byte-compile ',(car (read-from-string (file-name-base fun))))
      (defun ,(car (read-from-string (concat (file-name-base fun) "-async")))
-         (&optional string &rest args)
+         (&optional object &rest args)
        ,(concat (with-temp-buffer
                   (insert (file-name-base fun) "-async"
                           " is a haskell-function which is run
-async with ARGS and STRING as stdin.  The result is considered
+async with ARGS and OBJECT as stdin.  The result is considered
 functional and collected in a hash-tabel.  To retrieve the
 result, simply run `" (file-name-base fun) "' with the same
 arguments.  When the result is not already returned, emacs will
@@ -160,13 +162,15 @@ expression to retrieve the result sync.\n\n")
                           (with-temp-buffer
                             (insert-file-contents (concat fun ".hs"))
                             (buffer-string)))))
-       (let* ((hash (sxhash (list ,(file-name-base fun) string args)))
+       (setq object (format "%s" object))
+       (setq args (mapcar (lambda (x) (format "%s" x)) args))
+       (let* ((hash (sxhash (list ,(file-name-base fun) object args)))
               (value (gethash hash haskell-emacs--hash-table)))
          (unless value
            (while (<= haskell-emacs--number-of-cores (length (process-list)))
              (accept-process-output))
            (let ((process-connection-type nil))
-             (unless string (setq string ""))
+             (unless object (setq object ""))
              (let ((pr (apply (function start-process)
                               ,(file-name-base fun) nil ,fun args)))
                (eval `(puthash
@@ -186,7 +190,7 @@ expression to retrieve the result sync.\n\n")
                                   (setq err-msg "unknown error"))
                                 (puthash ,hash `(error ,err-msg)
                                          haskell-emacs--hash-table))))))
-               (process-send-string pr string)
+               (process-send-string pr object)
                (process-send-eof pr))))
          `(eval (gethash ,hash haskell-emacs--hash-table))))
      (byte-compile ',(car (read-from-string
