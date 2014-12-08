@@ -142,6 +142,40 @@ persists an entire emacs session.\n\n")
                         haskell-emacs--hash-table)
                (error (buffer-string)))))))
      (byte-compile ',(intern (file-name-base fun)))
+     (defun ,(intern (concat (file-name-base fun) "-region"))
+         (beg end)
+       (interactive "r")
+       ,(concat
+         (with-temp-buffer (insert (concat (file-name-base fun) "-region")
+                                   " is an intearactive  haskell-function which
+acts on the current region as stdin.  The result is
+considered functional and therefore saved in a hash-tabel to
+speed up repeated calls with the same arguments.  The hash-tabel
+persists an entire emacs session.\n\n")
+                           (let ((fill-column 60))
+                             (fill-region (point-min) (point-max)))
+                           (buffer-string))
+         (when (file-exists-p (concat fun ".hs"))
+           (concat "The source of this function is:\n\n"
+                   (with-temp-buffer
+                     (insert-file-contents (concat fun ".hs"))
+                     (buffer-string)))))
+       (let* ((object (substring (buffer-string) (- beg 1) (- end 1)))
+              (hash (sxhash (list ,(file-name-base fun) object nil)))
+              (value (gethash hash haskell-emacs--hash-table)))
+         (kill-region beg end)
+         (if value (setq object (eval value))
+           (with-temp-buffer
+             (when object (insert object))
+             (if (equal 0 (apply (function call-process-region) (point-min)
+                                 (point-max) ,fun t t nil))
+                 (setq object (puthash hash (buffer-string) haskell-emacs--hash-table))
+               (when (equal (buffer-string) "") (insert "unknown error"))
+               (puthash hash `(error ,(buffer-string))
+                        haskell-emacs--hash-table)
+               (error (buffer-string)))))
+         (insert object)))
+     (byte-compile ',(intern (concat (file-name-base fun) "-region")))
      (defun ,(intern (concat (file-name-base fun) "-async"))
          (&optional object &rest args)
        ,(concat (with-temp-buffer
@@ -169,29 +203,28 @@ expression to retrieve the result sync.\n\n")
          (unless value
            (while (<= haskell-emacs--number-of-cores (length (process-list)))
              (accept-process-output))
-           (let ((process-connection-type nil))
-             (unless object (setq object ""))
-             (let ((pr (apply (function start-process)
-                              ,(file-name-base fun) nil ,fun args)))
-               (eval `(puthash
-                       hash '(progn (accept-process-output ,pr)
-                                    (gethash ,hash haskell-emacs--hash-table))
-                       haskell-emacs--hash-table))
-               (eval `(set-process-filter
-                       pr (lambda (proc str)
-                            (puthash ,hash str haskell-emacs--hash-table))))
-               (eval `(set-process-sentinel
-                       pr (lambda (p s)
-                            (unless (= 0 (process-exit-status p))
-                              (let ((err-msg
-                                     (gethash ,hash
-                                              haskell-emacs--hash-table)))
-                                (unless (stringp err-msg)
-                                  (setq err-msg "unknown error"))
-                                (puthash ,hash `(error ,err-msg)
-                                         haskell-emacs--hash-table))))))
-               (process-send-string pr object)
-               (process-send-eof pr))))
+           (unless object (setq object ""))
+           (let ((pr (apply (function start-process)
+                            ,(file-name-base fun) nil ,fun args)))
+             (eval `(puthash
+                     hash '(progn (accept-process-output ,pr)
+                                  (gethash ,hash haskell-emacs--hash-table))
+                     haskell-emacs--hash-table))
+             (eval `(set-process-filter
+                     pr (lambda (proc str)
+                          (puthash ,hash str haskell-emacs--hash-table))))
+             (eval `(set-process-sentinel
+                     pr (lambda (p s)
+                          (unless (= 0 (process-exit-status p))
+                            (let ((err-msg
+                                   (gethash ,hash
+                                            haskell-emacs--hash-table)))
+                              (unless (stringp err-msg)
+                                (setq err-msg "unknown error"))
+                              (puthash ,hash `(error ,err-msg)
+                                       haskell-emacs--hash-table))))))
+             (process-send-string pr object)
+             (process-send-eof pr)))
          `(eval (gethash ,hash haskell-emacs--hash-table))))
      (byte-compile ',(intern
                       (concat (file-name-base fun) "-async")))))
