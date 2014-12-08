@@ -144,9 +144,8 @@ persists an entire emacs session.\n\n")
      (byte-compile ',(intern (file-name-base fun)))
      (defun ,(intern (concat (file-name-base fun) "-region"))
          (beg end)
-       (interactive "r")
        ,(concat
-         (with-temp-buffer (insert (concat (file-name-base fun) "-region")
+         (with-temp-buffer (insert (file-name-base fun) "-region"
                                    " is an intearactive  haskell-function which
 acts on the current region as stdin.  The result is
 considered functional and therefore saved in a hash-tabel to
@@ -160,6 +159,7 @@ persists an entire emacs session.\n\n")
                    (with-temp-buffer
                      (insert-file-contents (concat fun ".hs"))
                      (buffer-string)))))
+       (interactive "r")
        (let* ((object (substring (buffer-string) (- beg 1) (- end 1)))
               (hash (sxhash (list ,(file-name-base fun) object nil)))
               (value (gethash hash haskell-emacs--hash-table)))
