@@ -19,20 +19,22 @@ dispatcher = Data.Map.fromList
  ]
 
 transform :: (AL.FromLisp a, AL.ToLisp b) => (a -> b) -> T.Text -> B.ByteString
-transform fu str = either error (failure . fmap (AL.encode . fu) . AL.fromLisp)
-                                . AP.parseOnly AL.lisp . BU.fromString $ T.unpack str
+transform fu str = either (B.pack . (++) "FAIL:")
+                          (failure . fmap (AL.encode . fu) . AL.fromLisp)
+                          . AP.parseOnly AL.lisp . BU.fromString $ T.unpack str
 
-failure :: AL.Result t -> t
-failure (AL.Success a) = a
-failure (AL.Error a ) = error a
-failure _ = error "oo"
+
+failure :: AL.Result B.ByteString -> B.ByteString
+failure (AL.Success a) = B.concat ["DONE:",a]
+failure (AL.Error a ) = B.pack $ "FAIL:" ++ a
+failure _ = B.pack "FAIL:unknown error"
 
 main :: IO ()
 main = do
     fun <- TIO.getLine
     case Data.Map.lookup fun dispatcher of
-      Just function -> TIO.putStrLn "OK" >> run function
-      _ -> TIO.putStrLn (T.concat ["NOT FOUND: ", fun]) >> main
+      Just function -> TIO.putStrLn "OK:" >> run function
+      _ -> TIO.putStrLn (T.concat ["not found ", fun]) >> main
 
 run :: (T.Text -> B.ByteString) -> IO ()
 run fun = loop [""]

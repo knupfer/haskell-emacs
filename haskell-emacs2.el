@@ -75,11 +75,11 @@
   "Take FUN and return a wrapper in elisp."
   `(progn
      (defun ,(intern fun)
-         (TEXT)
+         (OBJECT)
        ,(concat
          (with-temp-buffer (concat fun
                                    " is a haskell-function which
-receives the input TEXT.  The result is a String.")
+receives the input OBJECT.")
                            (let ((fill-column 60))
                              (fill-region (point-min) (point-max)))
                            (buffer-string)))
@@ -87,15 +87,17 @@ receives the input TEXT.  The result is a String.")
        (process-send-string haskell-emacs-process2
                             ,(concat fun "\n"))
        (accept-process-output haskell-emacs-process2)
-       (if (equal "OK\n" haskell-emacs--response)
+       (if (equal "OK:\n" haskell-emacs--response)
            (setq haskell-emacs--response nil)
          (error haskell-emacs--response))
        (process-send-string haskell-emacs-process2
-                            (concat TEXT "\n"))
+                            (concat (format "%S" OBJECT) "\n"))
        (process-send-string haskell-emacs-process2
                             (concat "49e3524a756a100a5cf3d27ede74ea95" "\n"))
        (accept-process-output haskell-emacs-process2)
-       (setq haskell-emacs--response (substring haskell-emacs--response 0 -1)))
+       (when (equal (substring haskell-emacs--response 0 5) "FAIL:")
+         (error (substring haskell-emacs--response 5)))
+       (setq haskell-emacs--response (read (substring haskell-emacs--response 5 -1))))
      (byte-compile ',(intern fun))))
 
 (defun haskell-emacs-format-exports (l)
