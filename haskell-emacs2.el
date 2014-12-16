@@ -106,7 +106,7 @@ receives the input TEXT.  The result is a String.")
                    (if x
                        (apply 'concat
                               (mapcar
-                               (lambda (y) (concat "(\""y "\","y "),"))
+                               (lambda (y) (concat "(\""y "\",transform "y "),"))
                                x))
                      ""))
                  l))))
