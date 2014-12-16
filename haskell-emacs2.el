@@ -95,7 +95,7 @@ receives the input TEXT.  The result is a String.")
        (process-send-string haskell-emacs-process2
                             (concat "49e3524a756a100a5cf3d27ede74ea95" "\n"))
        (accept-process-output haskell-emacs-process2)
-       (substring haskell-emacs--response 0 -1))
+       (setq haskell-emacs--response (substring haskell-emacs--response 0 -1)))
      (byte-compile ',(intern fun))))
 
 (defun haskell-emacs-format-exports (l)

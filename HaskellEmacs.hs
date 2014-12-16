@@ -38,5 +38,5 @@ run fun = loop [""]
   where loop xs = do
          x <- TIO.getLine
          if x == "49e3524a756a100a5cf3d27ede74ea95"
-            then TIO.putStr (fun $ T.unlines xs) >> main
+            then TIO.putStrLn (fun . T.unlines $ reverse xs) >> main
             else loop (x:xs)
