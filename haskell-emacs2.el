@@ -140,7 +140,7 @@ receives the input TEXT.  The result is a String.")
                           (insert-file-contents ".HaskellEmacs.hs")
                           (buffer-string))))
       (write-file ".HaskellEmacs.hs"))
-    (call-process "ghc" nil nil nil "-O2" ".HaskellEmacs.hs")))
+    (call-process "ghc" nil nil nil "-O2" "--make" ".HaskellEmacs.hs")))
 
 (provide 'hask-emac)
 
