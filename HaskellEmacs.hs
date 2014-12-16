@@ -20,7 +20,7 @@ transform fu str = either (B.pack . (++) "FAIL:")
                           . A.parseOnly lisp . B.fromString $ T.unpack str
 
 failure :: Result B.ByteString -> B.ByteString
-failure (Success a) = B.concat ["DONE:",a]
+failure (Success a) = a
 failure (Error a ) = B.pack $ "FAIL:" ++ a
 
 main :: IO ()
