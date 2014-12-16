@@ -87,17 +87,18 @@ receives the input OBJECT.")
        (process-send-string haskell-emacs-process
                             ,(concat fun "\n"))
        (accept-process-output haskell-emacs-process)
-       (if (equal "OK:\n" haskell-emacs--response)
+       (if (string-prefix-p "=:OK:=" haskell-emacs--response)
            (setq haskell-emacs--response nil)
          (error haskell-emacs--response))
        (process-send-string haskell-emacs-process
                             (concat (format "%S" OBJECT) "\n"))
        (process-send-string haskell-emacs-process
                             (concat "49e3524a756a100a5cf3d27ede74ea95" "\n"))
-       (accept-process-output haskell-emacs-process)
-       (when (string-prefix-p "FAIL:" haskell-emacs--response)
-         (error (substring haskell-emacs--response 5)))
-       (setq haskell-emacs--response (read (substring haskell-emacs--response 0 -1))))
+       (while (not (string-suffix-p "=:DONE:=" haskell-emacs--response))
+         (accept-process-output haskell-emacs-process))
+       (when (string-prefix-p "=:FAIL:=" haskell-emacs--response)
+         (error (substring haskell-emacs--response 8 -8)))
+       (setq haskell-emacs--response (read (substring haskell-emacs--response 8 -8))))
      (byte-compile ',(intern fun))))
 
 (defun haskell-emacs-format-exports (l)

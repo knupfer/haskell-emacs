@@ -7,6 +7,7 @@ import qualified Data.ByteString.UTF8       as B (fromString)
 import qualified Data.Map                   as M
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as T
+import           System.IO                  (hFlush, stdout)
 
 dispatcher :: M.Map T.Text (T.Text -> B.ByteString)
 dispatcher = M.fromList
@@ -15,25 +16,28 @@ dispatcher = M.fromList
  ]
 
 transform :: (FromLisp a, ToLisp b) => (a -> b) -> T.Text -> B.ByteString
-transform fu str = either (B.pack . (++) "FAIL:")
+transform fu str = either (B.pack . (++) "=:FAIL:=")
                           (failure . fmap (encode . fu) . fromLisp)
                           . A.parseOnly lisp . B.fromString $ T.unpack str
 
 failure :: Result B.ByteString -> B.ByteString
-failure (Success a) = a
-failure (Error a ) = B.pack $ "FAIL:" ++ a
+failure (Success a) = B.concat ["=:PASS:=",a]
+failure (Error a ) = B.pack $ "=:FAIL:=" ++ a
 
 main :: IO ()
 main = do
     fun <- T.getLine
     case M.lookup fun dispatcher of
-      Just function -> T.putStrLn "OK:" >> run function
-      _ -> T.putStrLn (T.concat ["not found ", fun]) >> main
+      Just function -> T.putStrLn "=:OK:=" >> run function
+      _ -> T.putStrLn (T.concat ["=:NULL:=", fun]) >> main
 
 run :: (T.Text -> B.ByteString) -> IO ()
 run fun = loop [""]
   where loop xs = do
          x <- T.getLine
          if x == "49e3524a756a100a5cf3d27ede74ea95"
-            then B.putStrLn (fun . T.unlines $ reverse xs) >> main
+            then B.putStr (fun . T.unlines $ reverse xs)
+                 >> B.putStr "=:DONE:="
+                 >> hFlush stdout
+                 >> main
             else loop (x:xs)
