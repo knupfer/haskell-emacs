@@ -91,8 +91,21 @@ receives the input OBJECT.")
        (if (string-prefix-p "=:OK:=" haskell-emacs--response)
            (setq haskell-emacs--response nil)
          (error haskell-emacs--response))
+       (if (stringp OBJECT)
+           (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
+         (if (or (listp OBJECT) (arrayp OBJECT))
+             (progn
+               (setq OBJECT (haskell-emacs--array-to-list OBJECT))
+               (setq OBJECT
+                     (concat "("
+                             (apply 'concat
+                                    (mapcar (lambda (x)
+                                              (concat (format "%S" x) "\n"))
+                                            OBJECT))
+                             ")")))
+           (setq OBJECT (format "%S" OBJECT))))
        (process-send-string haskell-emacs-process
-                            (concat (format "%S" OBJECT) "\n"))
+                            (concat OBJECT "\n"))
        (process-send-string haskell-emacs-process
                             (concat "49e3524a756a100a5cf3d27ede74ea95" "\n"))
        (while (not (string-suffix-p "=:DONE:=" haskell-emacs--response))
@@ -101,6 +114,12 @@ receives the input OBJECT.")
          (error (substring haskell-emacs--response 9 -9)))
        (setq haskell-emacs--response (read (substring haskell-emacs--response 9 -9))))
      (byte-compile ',(intern fun))))
+
+(defun haskell-emacs--array-to-list (a)
+  (mapcar (lambda (x) (if (or (arrayp x) (listp x))
+                          (haskell-emacs--array-to-list x)
+                        x))
+          a))
 
 (defun haskell-emacs-format-exports (l)
   (let ((result
