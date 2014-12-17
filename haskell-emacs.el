@@ -29,10 +29,9 @@
 
 ;;; Code:
 
-;;(defvar haskell-emacs-load-dir (file-name-directory load-file-name))
+(defvar haskell-emacs-load-dir (file-name-directory load-file-name))
 (defvar haskell-emacs--response nil)
 (defvar haskell-emacs-process nil)
-(defvar haskell-emacs-load-dir "~/git/haskell-emacs/")
 (defvar haskell-emacs-dir "~/.emacs.d/haskell-fun/")
 (defun haskell-emacs-init ()
   (interactive)
