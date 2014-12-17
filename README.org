@@ -81,7 +81,7 @@ loops the overhead is irrelevant.
 You'll need:
 - ghc
 - attoparsec
-- attolisp
+- atto-lisp
 
 Thats all.
 
