@@ -1,103 +1,95 @@
 * What is it?
-=haskell-emacs= is a library which tries to allow extensions of emacs
-to be in haskell.  It provides an interface with haskell functions,
-which can be run from emacs in a synchronous and in an asynchronous
-manner.
+=haskell-emacs= is a library which allows extending emacs in haskell.
+It provides an FFI (foreign function interface) for haskell functions.
 
 * Examples
-Consider that you've got the following toy haskell-program:
+Consider that you've got the following toy program:
 
-#+BEGIN_EXAMPLE haskell
--- /home/foo/.emacs.d/haskell-fun/digitSum.hs
-import Data.Char (digitToInt)
+#+BEGIN_SRC haskell
+-- /home/foo/.emacs.d/haskell-fun/Matrix.hs
+module Matrix (identity,isIdentity,dyadic,transpose) where
 
-main :: IO ()
-main = interact $ show . sum . map digitToInt
-#+END_EXAMPLE
+import qualified Data.List as L
 
-Now compile it
-#+BEGIN_EXAMPLE
-ghc -O2 digitSum
-#+END_EXAMPLE
+transpose :: [[Int]] -> [[Int]]
+transpose = L.transpose
 
-Start your emacs and evaluate following expression:
-#+BEGIN_EXAMPLE elisp
+identity :: Int -> [[Int]]
+identity n
+  | n > 1 = L.nub $ L.permutations $ 1 : replicate (n-1) 0
+  | otherwise = [[1]]
+
+isIdentity :: [[Int]] -> Bool
+isIdentity xs = xs == identity (length xs)
+
+dyadic :: ([Int],[Int]) -> [[Int]]
+dyadic (xs,ys) = map (\x -> map (x*) ys) xs
+#+END_SRC
+
+Start your emacs and evaluate following expression (and put it in
+your .emacs if you like):
+#+BEGIN_SRC emacs-lisp
 (require 'haskell-emacs)
 (haskell-emacs-init)
-#+END_EXAMPLE
+#+END_SRC
 
 Now you're set to toy around with your new elisp functions:
-#+BEGIN_EXAMPLE elisp
-(digitSum 74)
- => "11"
-#+END_EXAMPLE
+#+BEGIN_SRC emacs-lisp
+(Matrix.identity 3)
+  => ((1 0 0) (0 1 0) (0 0 1))
 
-Now consider you want to do some heavy async work:
-#+BEGIN_EXAMPLE elisp
-(setq my-Data nil)
-(while (< (length my-Data) 10000)
-  (add-to-list 'my-Data (random 1000000000)))
+(Matrix.transpose '((1 2) (3 4) (5 6)))
+  => ((1 3 5) (2 4 6))
 
-(let ((multi-core-computation (mapcar 'digitSum-async my-Data)))
-  (setq my-Result (mapcar 'eval multi-core-computation)))
-#+END_EXAMPLE
+(Matrix.isIdentity '((1 0) (0 1)))
+  => t
 
-First, we have created a big list of random numbers, afterwards we
-calculate with multiple cores simultaneously the map of our function
-over our data and finaly we retrieve and wait for the result by
-calling eval and store it.
+(Matrix.dyadic '((1 2 3) (4 5 6)))
+  => ((4 5 6) (8 10 12) (12 15 18))
+#+END_SRC
 
-Alternatively, you can call
-#+BEGIN_EXAMPLE elisp
-(setq my-Result (mapcar 'eval (mapcar 'digitSum-async my-Data)))
-#+END_EXAMPLE
+üNow consider some bad input:
+#+BEGIN_SRC emacs-lisp
+(Matrix.identity "a")
+  => Debugger entered--Lisp error: (error "when expecting a Integral, encountered string instead")
 
-It would be wise to run the async calculation as soon as you've got
-the required input for the function and retrieve the output as late as
-possible, in this way, not only your async processes will be executed
-in parallel, but also your elisp code in parallel to your haskell
-function.
+(Matrix.transpose [(1 2) [3 4]])
+  => ((1 3) (2 4))
 
-#+BEGIN_EXAMPLE elisp
-(let ((multi (mapcar 'digitSum-async my-Data)))
-  ;; ... do your other elisp stuff here ...
-  (apply '+ (mapcar (lambda (n) (string-to-number (eval n))) multi)))
-#+END_EXAMPLE
+(Matrix.dyadic '+)
+  => Debugger entered--Lisp error: (error "when expecting a pair, encountered symbol instead")
+#+END_SRC
 
-Perhaps you have noticed: already the second map of =digitSum= on your
-=my-Data= is vastly faster, this is due to result caching.  If you
-want to make the entire computation, you have to fill your =my-data=
-with other random numbers.
+You see, that type errors get errors in emacs, with very good type
+dependent descriptions of the error.  You see, that it gives only an
+error, if the parser doesn't find a transformation of your proposed
+input to the required type of the haskell function.  Arrays will be
+translated (recursively) to Lists, and Lists can represent Lists or
+Tuples.
 
-* Details
-On running =haskell-emacs-init=, every haskell program which is in a
-customizeable directory (the default is =~/.emacs.d/haskell-fun/= will
-get a wrapper to call it with a emacs function of the same name.  This
-function receives optional an input string and arguments and returns
-the result into a hash-table and to the user.  If the same function
-with the same arguments is called again, it will use the result from
-the hash-table to speed up things.
+* Performance
+There is a small overhead calling haskell functions, so for very
+trivial situations, elisp functions will be faster.  On my laptop
+(i5-4210, 2.7Ghz) it costs the following:
+- 0.4 ms per function call
+- 0.003 ms per received char
+- 0.0005 ms per sended char
 
-If one uses the async version of a function ("-async" is appended to
-the function name), a expression is returned which can be evaluated to
-get (and wait for if necessary) the result.  If the non-async version
-is called while the async function calculates the result, the
-non-async version will be aware of the calculation and simply block
-emacs and wait for the result from the async process.
+Unless you use haskell functions on megabytes of text or in very tight
+loops, it won't be noticed.
 
-* Pitfalls
-At least at the moment, the cache from the hash-table doesn't expire,
-so if you use a lot haskell functions which return big objects (like
-huge buffer-strings) a lot of memory will be consumed.
+* Shortcomings
+About 10 types are recognized as input, and about 10 types of output
+can be transformed into an elisp type.  Thats quite good, but not
+everything.  If you write a function with an unknown type,
+=haskell-emacs-init= will signal an error with the output from ghc.
 
-Functions only return strings, so if you expect a number to be
-returned, you have to convert the result yourself.
+At the moment, only curried functions can be used, other types cause
+errors (again on run of =haskell-emacs-init=, so you'll notice
+immediately).
 
-Some overhead is required to pipe your input, start the programm etc,
-so for very trivial use cases, emacs inbuilds are faster.
+Polymorphic types are not well supported and higher functions aren't
+supported at all, you can't pass functions as arguments to haskell
+functions in emacs.
 
-=haskell-emacs= considers every haskell program as pure, it happily
-assumes that your program spits out the same result with the same
-arguments.  If this is not the case, be aware that the result is
-cached: each haskell program with the same arguments gets executed at
-most one time.
+If a haskell function causes an error, you have to rerun =haskell-emacs-init=.
