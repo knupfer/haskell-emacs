@@ -163,7 +163,12 @@ receives the input OBJECT.")
                           (insert-file-contents ".HaskellEmacs.hs")
                           (buffer-string))))
       (write-file ".HaskellEmacs.hs"))
-    (call-process "ghc" nil nil nil "-O2" "--make" ".HaskellEmacs.hs")))
+    (unless (equal 0
+                   (call-process "ghc" nil "*HASKELL-EMACS*" nil "-O2" "--make" ".HaskellEmacs.hs"))
+      (let ((bug (with-current-buffer "*HASKELL-EMACS*" (buffer-string))))
+        (kill-buffer "*HASKELL-EMACS*")
+        (error bug)))
+    (kill-buffer "*HASKELL-EMACS*")))
 
 (provide 'haskell-emacs)
 
