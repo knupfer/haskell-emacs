@@ -124,7 +124,7 @@ receives the input OBJECT.")
              (concat "^module[ \t\n\r]+" f-base
                      "[ \t\n\r]*(\\(\\(?:[^)]\\|[ \n\t\r]\\)+\\))")
              nil t)
-        (mapcar (lambda (fu) (concat f-base "." fu))
+        (mapcar (lambda (fu) (concat f-base "." (car (last (split-string fu "\\.")))))
                 (split-string (match-string 1) "[ \n\r,]+"))))))
 
 (defun haskell-emacs-compile (code import export)
