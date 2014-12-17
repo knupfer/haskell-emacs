@@ -26,12 +26,22 @@ dyadic :: ([Int],[Int]) -> [[Int]]
 dyadic (xs,ys) = map (\x -> map (x*) ys) xs
 #+END_SRC
 
+Add the directory of =haskell-emacs= to your emacs load path:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'load-path "~/git/haskell-emacs/")
+#+END_SRC
+
 Start your emacs and evaluate following expression (and put it in
 your .emacs if you like):
 #+BEGIN_SRC emacs-lisp
 (require 'haskell-emacs)
 (haskell-emacs-init)
 #+END_SRC
+Note that it is not sufficient to evaluate the buffer of the source
+file, it has to know where some haskell glue code is located and uses
+therefore =load-file-name=, so you have to load or require it, and the
+glue code must be in the same directory (which is the case if you
+simply clone the repo).
 
 Now you're set to toy around with your new elisp functions:
 #+BEGIN_SRC emacs-lisp
