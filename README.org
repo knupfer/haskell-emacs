@@ -48,7 +48,7 @@ Now you're set to toy around with your new elisp functions:
   => ((4 5 6) (8 10 12) (12 15 18))
 #+END_SRC
 
-üNow consider some bad input:
+Now consider some bad input:
 #+BEGIN_SRC emacs-lisp
 (Matrix.identity "a")
   => Debugger entered--Lisp error: (error "when expecting a Integral, encountered string instead")
@@ -60,12 +60,11 @@ Now you're set to toy around with your new elisp functions:
   => Debugger entered--Lisp error: (error "when expecting a pair, encountered symbol instead")
 #+END_SRC
 
-You see, that type errors get errors in emacs, with very good type
-dependent descriptions of the error.  You see, that it gives only an
-error, if the parser doesn't find a transformation of your proposed
-input to the required type of the haskell function.  Arrays will be
-translated (recursively) to Lists, and Lists can represent Lists or
-Tuples.
+You see that type errors get errors in emacs with good descriptions of
+the error.  It puts only an error, if the parser doesn't find a
+transformation of your proposed input to the required type of the
+haskell function.  Arrays will be translated (recursively) to Lists,
+and Lists can represent Lists or Tuples.
 
 * Performance
 There is a small overhead calling haskell functions, so for very
@@ -76,7 +75,15 @@ trivial situations, elisp functions will be faster.  On my laptop
 - 0.0005 ms per sended char
 
 Unless you use haskell functions on megabytes of text or in very tight
-loops, it won't be noticed.
+loops the overhead is irrelevant.
+
+* Dependencies
+You'll need:
+- ghc
+- attoparsec
+- attolisp
+
+Thats all.
 
 * Shortcomings
 About 10 types are recognized as input, and about 10 types of output
