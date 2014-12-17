@@ -36,6 +36,8 @@
 (defun haskell-emacs-init ()
   (interactive)
   (save-excursion
+    (unless (file-directory-p haskell-emacs-dir)
+      (mkdir haskell-emacs-dir t))
     (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$")))
       (let ((imports)
             (exports))
