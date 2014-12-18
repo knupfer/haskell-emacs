@@ -20,9 +20,9 @@ dispatcher = M.fromList
 -- | Transform a curried function to a function which receives and
 -- returns a string in lisp syntax.
 transform :: (FromLisp a, ToLisp b) => (a -> b) -> T.Text -> B.ByteString
-transform f s = either (B.pack . (++) "=:FAIL:=")
-                       (failure . fmap (encode . f) . fromLisp)
-                       . A.parseOnly lisp . B.fromString $ T.unpack s
+transform f = either (B.pack . (++) "=:FAIL:=")
+                      (failure . fmap (encode . f) . fromLisp)
+                      . A.parseOnly lisp . B.fromString . T.unpack
 
 -- | Retrieves the contents of the result and annotates whether it was
 -- a success.
