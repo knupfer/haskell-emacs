@@ -5,6 +5,7 @@ import qualified Data.Attoparsec.ByteString as A (parseOnly)
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.UTF8       as B (fromString)
 import qualified Data.Map                   as M
+import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as T
 import           System.IO                  (hFlush, stdout)
@@ -27,7 +28,7 @@ transform f = either (B.pack . (++) "=:FAIL:=")
 -- | Retrieves the contents of the result and annotates whether it was
 -- a success.
 failure :: Result B.ByteString -> B.ByteString
-failure (Success s) = B.concat ["=:PASS:=\n", s]
+failure (Success s) = "=:PASS:=\n" <> s
 failure (Error s)   = B.pack $ "=:FAIL:=\n" ++ s
 
 -- | Lookup functions given in stdin in the dispatcher.
