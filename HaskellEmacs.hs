@@ -36,13 +36,13 @@ main :: IO ()
 main = do
     f <- T.getLine
     case M.lookup f dispatcher of
-      Just function -> T.putStrLn "=:OK:=" >> run function
-      _ -> T.putStr (T.unlines $ M.keys dispatcher) >> main
+      Just function -> T.putStrLn "=:OK:="                      >> run function
+      _             -> T.putStr (T.unlines $ M.keys dispatcher) >> main
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
 run :: (T.Text -> B.ByteString) -> IO ()
-run f = loop [""]
+run f = loop []
   where loop xs = do
          x <- T.getLine
          if x == "49e3524a756a100a5cf3d27ede74ea95"
