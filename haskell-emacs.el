@@ -144,7 +144,7 @@ receives the input OBJECT.")
       (insert-file-contents (concat haskell-emacs-dir file-name))
       (when (re-search-forward
              (concat "^module[ \t\n\r]+" f-base
-                     "[ \t\n\r]*([ \n\t\r]*\\(\\(?:[^)]\\|[ \n\t\r]\\)+\\))")
+                     "[ \t\n\r]*([ \n\t\r]*\\(\\(?:[^)]\\|[ \n\t\r]\\)+\\)[ \n\t\r]*)")
              nil t)
         (mapcar (lambda (fu) (concat f-base "." (car (last (split-string fu "\\.")))))
                 (split-string (match-string 1) "[ \n\r,]+"))))))
@@ -164,8 +164,8 @@ receives the input OBJECT.")
                           (insert-file-contents ".HaskellEmacs.hs")
                           (buffer-string))))
       (write-file ".HaskellEmacs.hs"))
-    (unless (equal 0
-                   (call-process "ghc" nil "*HASKELL-EMACS*" nil "-O2" "--make" ".HaskellEmacs.hs"))
+    (unless (equal 0 (call-process "ghc" nil "*HASKELL-EMACS*"
+                                   nil "-O2" "--make" ".HaskellEmacs.hs"))
       (let ((bug (with-current-buffer "*HASKELL-EMACS*" (buffer-string))))
         (kill-buffer "*HASKELL-EMACS*")
         (error bug)))
