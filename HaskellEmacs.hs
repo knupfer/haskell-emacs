@@ -34,20 +34,23 @@ failure (Error s)   = B.pack $ "=:FAIL:=\n" ++ s
 -- | Lookup functions given in stdin in the dispatcher.
 main :: IO ()
 main = do
-    f <- T.getLine
+    (f,n) <- fmap ((\(x:y:_) -> (x,y)) . T.words) T.getLine
     case M.lookup f dispatcher of
-      Just function -> T.putStrLn "=:OK:="                      >> run function
+      Just function -> T.putStrLn "=:OK:="                      >> run function n
       _             -> T.putStr (T.unlines $ M.keys dispatcher) >> main
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
-run :: (T.Text -> B.ByteString) -> IO ()
-run f = loop []
+
+run :: (T.Text -> B.ByteString) -> T.Text -> IO ()
+run f n = loop []
   where loop xs = do
          x <- T.getLine
          if x == "49e3524a756a100a5cf3d27ede74ea95"
             then B.putStrLn (f . T.unlines $ reverse xs)
-                 >> B.putStr "=:DONE:="
-                 >> hFlush stdout
-                 >> main
+                >> T.putStr "=:PROC:="
+                >> T.putStr n
+                >> B.putStr "=:DONE:="
+                >> hFlush stdout
+                >> main
             else loop (x:xs)
