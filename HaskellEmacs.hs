@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 ---- <<import>> ----
+import           Control.Applicative
+import           Control.Monad
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString as A (parseOnly)
 import qualified Data.ByteString.Lazy.Char8 as B
@@ -9,7 +11,6 @@ import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as T
 import           System.IO                  (hFlush, stdout)
-import Control.Monad
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
@@ -35,7 +36,7 @@ failure (Error s)   = B.pack $ " nil)" ++ s
 -- | Lookup functions given in stdin in the dispatcher.
 main :: IO ()
 main = do
-    (f,n,ls) <- fmap ((\(x:y:z:_) -> (x,y,read (T.unpack z))) . T.words) T.getLine
+    (f,n,ls) <- ((\(x:y:z:_) -> (x,y,read (T.unpack z))) . T.words) <$> T.getLine
     case M.lookup f dispatcher of
       Just function -> run function n ls
       _             -> T.putStr (T.unlines $ M.keys dispatcher) >> main
@@ -45,13 +46,12 @@ main = do
 
 run :: (T.Text -> B.ByteString) -> T.Text -> Int -> IO ()
 run f n ls = do
-      xs <- replicateM ls T.getLine
-      let result = f . T.unlines $ xs in
-          B.putStr (B.concat [ "("
-                             , B.pack . show $ B.length result - 5
-                             , " "
-                             , B.pack $ T.unpack n
-                             ])
-          >> B.putStr result
-          >> hFlush stdout
-          >> main
+      result <- f . T.unlines <$> replicateM ls T.getLine
+      B.putStr (B.concat [ "("
+                         , B.pack . show $ B.length result - 5
+                         , " "
+                         , B.pack $ T.unpack n
+                         ])
+      B.putStr result
+      hFlush stdout
+      main
