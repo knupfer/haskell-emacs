@@ -38,7 +38,7 @@ main :: IO ()
 main = do
     (f,n,ls) <- (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words <$> T.getLine
     case M.lookup f dispatcher of
-      Just function -> replicateM ls T.getLine >>=  B.putStr . run function n
+      Just function -> replicateM ls T.getLine >>=  B.putStrLn . run function n
                       >> hFlush stdout >> main
       Nothing       -> main
 
@@ -46,7 +46,7 @@ main = do
 -- prints the output.
 run :: (T.Text -> B.ByteString) -> T.Text -> [T.Text] -> B.ByteString
 run f n ls = B.concat [ "("
-                      , B.pack . show $ (length . B.toString $ B.toStrict $ result) - 5
+                      , B.pack . show $ (length . B.toString $ B.toStrict $ result) - 4
                       , " "
                       , B.pack $ T.unpack n
                       , result

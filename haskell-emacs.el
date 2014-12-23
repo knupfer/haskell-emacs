@@ -61,9 +61,10 @@
          imports (haskell-emacs-format-exports exports))
         (when haskell-emacs-process
           (delete-process haskell-emacs-process))
-        (setq haskell-emacs-process
-              (start-process "hask" nil
-                             (concat haskell-emacs-dir ".HaskellEmacs")))
+        (let ((process-connection-type nil))
+          (setq haskell-emacs-process
+                (start-process "hask" nil
+                               (concat haskell-emacs-dir ".HaskellEmacs"))))
         (set-process-query-on-exit-flag haskell-emacs-process nil)
         (set-process-filter
          haskell-emacs-process
