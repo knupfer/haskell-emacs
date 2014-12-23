@@ -36,10 +36,10 @@ failure (Error s)   = B.pack $ " nil)" ++ s
 -- | Lookup functions given in stdin in the dispatcher.
 main :: IO ()
 main = do
-    (f,n,ls) <- ((\(x:y:z:_) -> (x,y,read (T.unpack z))) . T.words) <$> T.getLine
+    (f,n,ls) <- (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words <$> T.getLine
     case M.lookup f dispatcher of
       Just function -> run function n ls
-      _             -> T.putStr (T.unlines $ M.keys dispatcher) >> main
+      Nothing       -> main
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
@@ -51,7 +51,7 @@ run f n ls = do
                          , B.pack . show $ B.length result - 5
                          , " "
                          , B.pack $ T.unpack n
+                         , result
                          ])
-      B.putStr result
       hFlush stdout
       main
