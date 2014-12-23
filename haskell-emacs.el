@@ -117,8 +117,11 @@
                                               (number-to-string haskell-emacs--fun-count)
                                               " " (number-to-string
                                                    (with-temp-buffer (insert OBJECT)
-                                                                     (count-lines (point-min)
-                                                                                  (point-max))))
+                                                                     (let ((lines 1))
+                                                                       (goto-char (point-min))
+                                                                       (while (re-search-forward "\n" nil t)
+                                                                         (setq lines (+ lines 1)))
+                                                                       lines)))
                                               "\n" OBJECT "\n")))))
     `(progn
        (defun ,(intern fun) (OBJECT)
