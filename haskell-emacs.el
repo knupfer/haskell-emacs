@@ -97,62 +97,44 @@
 
 (defun haskell-emacs--wrapper-fun (fun)
   "Take FUN and return a wrapper in elisp."
-  `(progn
-     (defun ,(intern fun) (OBJECT)
-       (if (stringp OBJECT)
-           (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
-         (if (or (listp OBJECT) (arrayp OBJECT))
-             (progn
-               (setq OBJECT (haskell-emacs--array-to-list OBJECT))
-               (setq OBJECT
-                     (concat "("
-                             (apply 'concat
-                                    (mapcar (lambda (x)
-                                              (concat (format "%S" x) "\n"))
-                                            OBJECT))
-                             ")")))
-           (setq OBJECT (format "%S" OBJECT))))
-       (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
-       (process-send-string haskell-emacs-process
-                            (concat ,fun " "
-                                    (number-to-string haskell-emacs--fun-count)
-                                    " " (number-to-string
-                                         (with-temp-buffer (insert OBJECT)
-                                                           (count-lines (point-min)
-                                                                        (point-max))))
-                                    "\n" OBJECT "\n"))
-       (while (not (gethash haskell-emacs--fun-count haskell-emacs--hash-table))
-         (accept-process-output haskell-emacs-process))
-       (read (gethash haskell-emacs--fun-count haskell-emacs--hash-table)))
+  (let ((skeleton
+         `(progn (if (stringp OBJECT)
+                     (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
+                   (if (or (listp OBJECT) (arrayp OBJECT))
+                       (progn
+                         (setq OBJECT (haskell-emacs--array-to-list OBJECT))
+                         (setq OBJECT
+                               (concat "("
+                                       (apply 'concat
+                                              (mapcar (lambda (x)
+                                                        (concat (format "%S" x) "\n"))
+                                                      OBJECT))
+                                       ")")))
+                     (setq OBJECT (format "%S" OBJECT))))
+                 (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
+                 (process-send-string haskell-emacs-process
+                                      (concat ,fun " "
+                                              (number-to-string haskell-emacs--fun-count)
+                                              " " (number-to-string
+                                                   (with-temp-buffer (insert OBJECT)
+                                                                     (count-lines (point-min)
+                                                                                  (point-max))))
+                                              "\n" OBJECT "\n")))))
+    `(progn
+       (defun ,(intern fun) (OBJECT)
+         ,skeleton
+         (haskell-emacs--get-result haskell-emacs--fun-count))
 
-     (defun ,(intern (concat fun "-async")) (OBJECT)
-       (if (stringp OBJECT)
-           (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
-         (if (or (listp OBJECT) (arrayp OBJECT))
-             (progn
-               (setq OBJECT (haskell-emacs--array-to-list OBJECT))
-               (setq OBJECT
-                     (concat "("
-                             (apply 'concat
-                                    (mapcar (lambda (x)
-                                              (concat (format "%S" x) "\n"))
-                                            OBJECT))
-                             ")")))
-           (setq OBJECT (format "%S" OBJECT))))
-       (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
-       (process-send-string haskell-emacs-process
-                            (concat ,fun " "
-                                    (number-to-string haskell-emacs--fun-count)
-                                    " " (number-to-string
-                                         (with-temp-buffer (insert OBJECT)
-                                                           (count-lines (point-min)
-                                                                        (point-max))))
-                                    "\n" OBJECT "\n"))
-       `(progn (while (not (gethash ,haskell-emacs--fun-count haskell-emacs--hash-table))
-                 (accept-process-output haskell-emacs-process))
-               (read (gethash ,haskell-emacs--fun-count haskell-emacs--hash-table))))
-     (byte-compile ',(intern fun))
-     (byte-compile ',(intern (concat fun "-async")))))
+       (defun ,(intern (concat fun "-async")) (OBJECT)
+         ,skeleton
+         `(haskell-emacs--get-result ,haskell-emacs--fun-count))
+       (byte-compile ',(intern fun))
+       (byte-compile ',(intern (concat fun "-async"))))))
+
+(defun haskell-emacs--get-result (key)
+  (while (not (gethash key haskell-emacs--hash-table))
+    (accept-process-output haskell-emacs-process))
+  (read (gethash key haskell-emacs--hash-table)))
 
 (defun haskell-emacs--array-to-list (a)
   (mapcar (lambda (x) (if (and (not (stringp x))
