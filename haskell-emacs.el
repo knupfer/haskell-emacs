@@ -38,6 +38,7 @@
 (defvar he/proc nil)
 
 (defun haskell-emacs-init ()
+  "Initialize haskell FFI or reload it to reflect changed functions."
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (mkdir haskell-emacs-dir t))
@@ -68,8 +69,9 @@
       (mapc (lambda (fi) (mapc (lambda (fu) (eval (he/fun-wrapper fu))) fi))
             exports))))
 
-(defun he/filter (proc str)
-  (setq he/response (concat he/response str))
+(defun he/filter (process output)
+  "Haskell PROCESS filter for OUTPUT from functions."
+  (setq he/response (concat he/response output))
   (let ((header (read he/response)))
     (while (<= (+ (car header) (length (format "%s" header)))
                (length he/response))
@@ -92,6 +94,7 @@
         (setq header (read he/response))))))
 
 (defun he/fun-body (fun)
+  "Generate function body for FUN."
   (setq ARG
         (if (stringp ARG)
             (format "%S" (substring-no-properties ARG))
@@ -114,47 +117,50 @@
                    "\n" ARG "\n")))
 
 (defun he/fun-wrapper (fun)
-  "Take FUN and return a wrapper in elisp."
+  "Take FUN and return wrappers in elisp."
   (let ((body `(he/fun-body ,fun)))
     `(progn (byte-compile (defun ,(intern fun) (ARG) ,body
                                  (he/get he/count)))
             (byte-compile (defun ,(intern (concat fun "-async")) (ARG) ,body
                                  `(he/get ,he/count))))))
 
-(defun he/get (key)
-  (while (not (gethash key he/table))
+(defun he/get (id)
+  "Retrieve result from haskell process with ID."
+  (while (not (gethash id he/table))
     (accept-process-output he/proc))
-  (read (gethash key he/table)))
+  (read (gethash id he/table)))
 
-(defun he/array-to-list (a)
+(defun he/array-to-list (array)
+  "Take a sequence and turn all ARRAY to lists."
   (mapcar (lambda (x) (if (and (not (stringp x)) (or (arrayp x) (listp x)))
                           (he/array-to-list x) x))
-          a))
+          array))
 
-(defun he/exports-format (l)
-  (let* ((t '(mapcar (lambda (y) (concat "(\""y"\",transform "y"),")) x))
-         (result (apply 'concat (mapcar (lambda (x) (if x
-                                                        (apply 'concat (eval t))
-                                                      ""))
-                                        l))))
+(defun he/exports-format (list-of-exports)
+  "Take a LIST-OF-EXPORTS and format it into haskell syntax."
+  (let* ((tr '(mapcar (lambda (y) (concat "(\""y"\",transform "y"),")) x))
+         (result (apply 'concat (mapcar (lambda (x) (apply 'concat (eval tr)))
+                                        list-of-exports))))
     (if (> (length result) 0)
         (substring result 0 -1)
       "")))
 
-(defun he/exports-get (file-name)
-  (let ((f-base (file-name-base file-name))
+(defun he/exports-get (file)
+  "Get a list of exports from FILE."
+  (let ((f-base (file-name-base file))
         (w "[ \t\n\r]"))
     (with-temp-buffer
-      (insert-file-contents (concat haskell-emacs-dir file-name))
+      (insert-file-contents (concat haskell-emacs-dir file))
       (when (re-search-forward
              (concat "^module" w "+" f-base
                      w "*(" w "*\\(\\(?:[^)]\\|" w "\\)+\\)" w "*)")
              nil t)
-        (mapcar (lambda (fu) (concat f-base "."
-                                     (car (last (split-string fu "\\.")))))
+        (mapcar (lambda (fun) (concat f-base "."
+                                      (car (last (split-string fun "\\.")))))
                 (split-string (match-string 1) "[ \n\r,]+"))))))
 
 (defun he/compile (code import export)
+  "Inject into CODE a list of IMPORT and of EXPORT and compile it."
   (with-temp-buffer
     (let ((heF ".HaskellEmacs.hs")
           (heB "*HASKELL-BUFFER*"))
