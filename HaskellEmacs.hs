@@ -38,20 +38,18 @@ failure (Error s)   = B.pack $ " nil)" ++ s
 
 -- | Lookup functions given in stdin in the dispatcher.
 main :: IO ()
-main = do busy <- newEmptyMVar
-          _ <- forkIO (forever (takeMVar busy >>= B.putStrLn >> hFlush stdout))
-          loop busy
-                where loop busy = do
-                       (f,n,ls) <- (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words <$> T.getLine
-                       case M.lookup f dispatcher of
-                         Just function -> do
-                                         xs <- replicateM ls T.getLine
-                                         _ <- forkIO $
-                                               let result = run function n xs in
-                                               (result `PS.using` PS.rdeepseq) `pseq`
-                                                    putMVar busy result
-                                         loop busy
-                         Nothing       -> loop busy
+main = do printer <- newEmptyMVar
+          _ <- forkIO (forever (takeMVar printer >>= B.putStrLn >> hFlush stdout))
+          forever (do
+                   (f,n,ls) <- extract <$> T.getLine
+                   maybe (error "This should not happen")
+                         (\function -> do
+                             xs <- replicateM ls T.getLine
+                             forkIO $
+                                   (\r -> (r `PS.using` PS.rdeepseq) `pseq`
+                                                putMVar printer r) $ run function n xs)
+                         $ M.lookup f dispatcher)
+     where extract = (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
