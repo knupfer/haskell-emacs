@@ -5,7 +5,7 @@ import           Control.Monad
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString as A (parseOnly)
 import qualified Data.ByteString.Lazy.Char8 as B
-import qualified Data.ByteString.UTF8       as B (fromString)
+import qualified Data.ByteString.UTF8       as B (fromString,toString)
 import qualified Data.Map                   as M
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
@@ -46,7 +46,7 @@ main = do
 -- prints the output.
 run :: (T.Text -> B.ByteString) -> T.Text -> [T.Text] -> B.ByteString
 run f n ls = B.concat [ "("
-                      , B.pack . show $ B.length result - 5
+                      , B.pack . show $ (length . B.toString $ B.toStrict $ result) - 5
                       , " "
                       , B.pack $ T.unpack n
                       , result
