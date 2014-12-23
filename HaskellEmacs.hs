@@ -1,16 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 ---- <<import>> ----
 import           Control.Applicative
+import           Control.Concurrent
 import           Control.Monad
+import           Control.Parallel
+import qualified Control.Parallel.Strategies as PS
 import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString as A (parseOnly)
-import qualified Data.ByteString.Lazy.Char8 as B
-import qualified Data.ByteString.UTF8       as B (fromString,toString)
-import qualified Data.Map                   as M
-import           Data.Monoid                ((<>))
-import qualified Data.Text                  as T
-import qualified Data.Text.IO               as T
-import           System.IO                  (hFlush, stdout)
+import qualified Data.Attoparsec.ByteString  as A (parseOnly)
+import qualified Data.ByteString.Lazy.Char8  as B
+import qualified Data.ByteString.UTF8        as B (fromString, toString)
+import qualified Data.Map                    as M
+import           Data.Monoid                 ((<>))
+import qualified Data.Text                   as T
+import qualified Data.Text.IO                as T
+import           System.IO                   (hFlush, stdout)
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
@@ -35,18 +38,26 @@ failure (Error s)   = B.pack $ " nil)" ++ s
 
 -- | Lookup functions given in stdin in the dispatcher.
 main :: IO ()
-main = do
-    (f,n,ls) <- (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words <$> T.getLine
-    case M.lookup f dispatcher of
-      Just function -> replicateM ls T.getLine >>=  B.putStrLn . run function n
-                      >> hFlush stdout >> main
-      Nothing       -> main
+main = do busy <- newEmptyMVar
+          _ <- forkIO (forever (takeMVar busy >>= B.putStrLn >> hFlush stdout))
+          loop busy
+                where loop busy = do
+                       (f,n,ls) <- (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words <$> T.getLine
+                       case M.lookup f dispatcher of
+                         Just function -> do
+                                         xs <- replicateM ls T.getLine
+                                         _ <- forkIO $
+                                               let result = run function n xs in
+                                               (result `PS.using` PS.rdeepseq) `pseq`
+                                                    putMVar busy result
+                                         loop busy
+                         Nothing       -> loop busy
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
 run :: (T.Text -> B.ByteString) -> T.Text -> [T.Text] -> B.ByteString
 run f n ls = B.concat [ "("
-                      , B.pack . show $ (length . B.toString $ B.toStrict $ result) - 4
+                      , B.pack . show $ (length . B.toString $ B.toStrict result) - 4
                       , " "
                       , B.pack $ T.unpack n
                       , result
