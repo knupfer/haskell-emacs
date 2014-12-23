@@ -66,16 +66,30 @@
                              (concat haskell-emacs-dir ".HaskellEmacs")))
         (set-process-query-on-exit-flag haskell-emacs-process nil)
         (set-process-filter
-         haskell-emacs-process (lambda (proc str)
-                                 (setq haskell-emacs--response
-                                       (concat haskell-emacs--response str))
-                                 (let ((res (split-string haskell-emacs--response "=:DONE:=")))
-                                   (when (> (length res) 1)
-                                     (while (> (length res) 1)
-                                       (let ((answer (split-string (pop res) "=:PROC:=")))
-                                         (puthash (string-to-number (cadr answer)) (car answer)
-                                                  haskell-emacs--hash-table)))
-                                     (setq haskell-emacs--response (apply 'concat res))))))
+         haskell-emacs-process
+         (lambda (proc str)
+           (setq haskell-emacs--response
+                 (concat haskell-emacs--response str))
+           (let ((header (read haskell-emacs--response)))
+             (while (<= (+ (car header) (length (format "%s" header)))
+                        (length haskell-emacs--response))
+               (unless (car (last header))
+                 (let ((bug (substring haskell-emacs--response
+                                       (length (format "%s" header))
+                                       (+ (length (format "%s" header)) (car header)))))
+                   (setq haskell-emacs--response (substring haskell-emacs--response
+                                                            (+ (length (format "%s" header))
+                                                               (car header))))
+                   (error bug)))
+               (puthash (cadr header) (substring haskell-emacs--response
+                                                 (length (format "%s" header))
+                                                 (+ (length (format "%s" header)) (car header)))
+                        haskell-emacs--hash-table)
+               (setq haskell-emacs--response (substring haskell-emacs--response
+                                                        (+ (length (format "%s" header))
+                                                           (car header))))
+               (when (> (length haskell-emacs--response) 7)
+                 (setq header (read haskell-emacs--response)))))))
         (mapc (lambda (fi)
                 (mapc (lambda (fu) (eval (haskell-emacs--wrapper-fun fu)))
                       fi))
@@ -84,23 +98,7 @@
 (defun haskell-emacs--wrapper-fun (fun)
   "Take FUN and return a wrapper in elisp."
   `(progn
-     (defun ,(intern fun)
-         (OBJECT)
-       ,(concat
-         (with-temp-buffer (concat fun
-                                   " is a haskell-function which
-receives the input OBJECT.")
-                           (let ((fill-column 60))
-                             (fill-region (point-min) (point-max)))
-                           (buffer-string)))
-       (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
-       (process-send-string haskell-emacs-process
-                            (concat ,fun " " (number-to-string haskell-emacs--fun-count)
-                                    "\n"))
-       (accept-process-output haskell-emacs-process)
-       (if (string-prefix-p "=:OK:=" haskell-emacs--response)
-           (setq haskell-emacs--response nil)
-         (error haskell-emacs--response))
+     (defun ,(intern fun) (OBJECT)
        (if (stringp OBJECT)
            (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
          (if (or (listp OBJECT) (arrayp OBJECT))
@@ -114,34 +112,20 @@ receives the input OBJECT.")
                                             OBJECT))
                              ")")))
            (setq OBJECT (format "%S" OBJECT))))
+       (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
        (process-send-string haskell-emacs-process
-                            (concat OBJECT "\n"))
-       (process-send-string haskell-emacs-process
-                            (concat "49e3524a756a100a5cf3d27ede74ea95" "\n"))
+                            (concat ,fun " "
+                                    (number-to-string haskell-emacs--fun-count)
+                                    " " (number-to-string
+                                         (with-temp-buffer (insert OBJECT)
+                                                           (count-lines (point-min)
+                                                                        (point-max))))
+                                    "\n" OBJECT "\n"))
        (while (not (gethash haskell-emacs--fun-count haskell-emacs--hash-table))
          (accept-process-output haskell-emacs-process))
-       (let ((res (gethash haskell-emacs--fun-count haskell-emacs--hash-table)))
-         (when (string-prefix-p "=:FAIL:=" res)
-           (error (substring res 9)))
-         (setq H-DEBUG res)
-         (read (substring res 9))))
-     (defun ,(intern (concat fun "-async"))
-         (OBJECT)
-       ,(concat
-         (with-temp-buffer (concat fun
-                                   " is a haskell-function which
-receives the input OBJECT.")
-                           (let ((fill-column 60))
-                             (fill-region (point-min) (point-max)))
-                           (buffer-string)))
-       (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
-       (process-send-string haskell-emacs-process
-                            (concat ,fun " " (number-to-string haskell-emacs--fun-count)
-                                    "\n"))
-       (accept-process-output haskell-emacs-process)
-       (if (string-prefix-p "=:OK:=" haskell-emacs--response)
-           (setq haskell-emacs--response nil)
-         (error haskell-emacs--response))
+       (read (gethash haskell-emacs--fun-count haskell-emacs--hash-table)))
+
+     (defun ,(intern (concat fun "-async")) (OBJECT)
        (if (stringp OBJECT)
            (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
          (if (or (listp OBJECT) (arrayp OBJECT))
@@ -155,18 +139,20 @@ receives the input OBJECT.")
                                             OBJECT))
                              ")")))
            (setq OBJECT (format "%S" OBJECT))))
+       (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
        (process-send-string haskell-emacs-process
-                            (concat OBJECT "\n"))
-       (process-send-string haskell-emacs-process
-                            (concat "49e3524a756a100a5cf3d27ede74ea95" "\n"))
+                            (concat ,fun " "
+                                    (number-to-string haskell-emacs--fun-count)
+                                    " " (number-to-string
+                                         (with-temp-buffer (insert OBJECT)
+                                                           (count-lines (point-min)
+                                                                        (point-max))))
+                                    "\n" OBJECT "\n"))
        `(progn (while (not (gethash ,haskell-emacs--fun-count haskell-emacs--hash-table))
                  (accept-process-output haskell-emacs-process))
-               (let ((res (gethash ,haskell-emacs--fun-count haskell-emacs--hash-table)))
-                 (when (string-prefix-p "=:FAIL:=" res)
-                   (error (substring res 9)))
-                 (setq H-DEBUG res)
-                 (read (substring res 9)))))
-     (byte-compile ',(intern fun))))
+               (read (gethash ,haskell-emacs--fun-count haskell-emacs--hash-table))))
+     (byte-compile ',(intern fun))
+     (byte-compile ',(intern (concat fun "-async")))))
 
 (defun haskell-emacs--array-to-list (a)
   (mapcar (lambda (x) (if (and (not (stringp x))
