@@ -46,12 +46,12 @@ main = do
 run :: (T.Text -> B.ByteString) -> T.Text -> Int -> IO ()
 run f n ls = do
       xs <- replicateM ls T.getLine
-      let result = f . T.unlines $ reverse xs in
-         B.putStr (B.concat [ "("
-                            , B.pack . show $ B.length result - 5
-                            , " "
-                            , B.pack $ T.unpack n
-                            ])
-         >> B.putStr result
-         >> hFlush stdout
-         >> main
+      let result = f . T.unlines $ xs in
+          B.putStr (B.concat [ "("
+                             , B.pack . show $ B.length result - 5
+                             , " "
+                             , B.pack $ T.unpack n
+                             ])
+          >> B.putStr result
+          >> hFlush stdout
+          >> main
