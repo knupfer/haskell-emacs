@@ -96,44 +96,42 @@
                       fi))
               exports)))))
 
+(defun haskell-emacs--fun-body (fun)
+  `(progn
+     (if (stringp ARG)
+         (setq ARG (format "%S" (substring-no-properties ARG)))
+       (if (or (listp ARG) (arrayp ARG))
+           (progn
+             (setq ARG (haskell-emacs--array-to-list ARG))
+             (setq ARG
+                   (concat "("
+                           (apply 'concat
+                                  (mapcar (lambda (x)
+                                            (concat (format "%S" x) "\n"))
+                                          ARG))
+                           ")")))
+         (setq ARG (format "%S" ARG))))
+     (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
+     (process-send-string haskell-emacs-process
+                          (concat ,fun " "
+                                  (number-to-string haskell-emacs--fun-count)
+                                  " " (number-to-string
+                                       (with-temp-buffer (insert ARG)
+                                                         (let ((lines 1))
+                                                           (goto-char (point-min))
+                                                           (while (re-search-forward "\n" nil t)
+                                                             (setq lines (+ lines 1)))
+                                                           lines)))
+                                  "\n" ARG "\n"))))
+
 (defun haskell-emacs--wrapper-fun (fun)
   "Take FUN and return a wrapper in elisp."
-  (let ((skeleton
-         `(progn (if (stringp OBJECT)
-                     (setq OBJECT (format "%S" (substring-no-properties OBJECT)))
-                   (if (or (listp OBJECT) (arrayp OBJECT))
-                       (progn
-                         (setq OBJECT (haskell-emacs--array-to-list OBJECT))
-                         (setq OBJECT
-                               (concat "("
-                                       (apply 'concat
-                                              (mapcar (lambda (x)
-                                                        (concat (format "%S" x) "\n"))
-                                                      OBJECT))
-                                       ")")))
-                     (setq OBJECT (format "%S" OBJECT))))
-                 (setq haskell-emacs--fun-count (+ 1 haskell-emacs--fun-count))
-                 (process-send-string haskell-emacs-process
-                                      (concat ,fun " "
-                                              (number-to-string haskell-emacs--fun-count)
-                                              " " (number-to-string
-                                                   (with-temp-buffer (insert OBJECT)
-                                                                     (let ((lines 1))
-                                                                       (goto-char (point-min))
-                                                                       (while (re-search-forward "\n" nil t)
-                                                                         (setq lines (+ lines 1)))
-                                                                       lines)))
-                                              "\n" OBJECT "\n")))))
+  (let ((body (haskell-emacs--fun-body fun)))
     `(progn
-       (defun ,(intern fun) (OBJECT)
-         ,skeleton
-         (haskell-emacs--get-result haskell-emacs--fun-count))
-
-       (defun ,(intern (concat fun "-async")) (OBJECT)
-         ,skeleton
-         `(haskell-emacs--get-result ,haskell-emacs--fun-count))
-       (byte-compile ',(intern fun))
-       (byte-compile ',(intern (concat fun "-async"))))))
+       (byte-compile (defun ,(intern fun) (ARG) ,body
+                            (haskell-emacs--get-result haskell-emacs--fun-count)))
+       (byte-compile (defun ,(intern (concat fun "-async")) (ARG) ,body
+                            `(haskell-emacs--get-result ,haskell-emacs--fun-count))))))
 
 (defun haskell-emacs--get-result (key)
   (while (not (gethash key haskell-emacs--hash-table))
