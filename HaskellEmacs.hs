@@ -9,6 +9,7 @@ import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as T
 import           System.IO                  (hFlush, stdout)
+import Control.Monad
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
@@ -43,20 +44,14 @@ main = do
 -- prints the output.
 
 run :: (T.Text -> B.ByteString) -> T.Text -> Int -> IO ()
-run f n =
-  loop []
-  where loop xs size =
-         if 0 >= size
-            then
-               let result = f . T.unlines $ reverse xs in
-               B.putStr (B.concat [ "("
-                                  , B.pack . show $ B.length result - 5
-                                  , " "
-                                  , B.pack $ T.unpack n
-                                  ])
-               >> B.putStr result
-               >> hFlush stdout
-               >> main
-            else do
-                 x <- T.getLine
-                 loop (x:xs) (size - 1)
+run f n ls = do
+      xs <- replicateM ls T.getLine
+      let result = f . T.unlines $ reverse xs in
+         B.putStr (B.concat [ "("
+                            , B.pack . show $ B.length result - 5
+                            , " "
+                            , B.pack $ T.unpack n
+                            ])
+         >> B.putStr result
+         >> hFlush stdout
+         >> main
