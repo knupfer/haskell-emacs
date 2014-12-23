@@ -38,20 +38,17 @@ main :: IO ()
 main = do
     (f,n,ls) <- (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words <$> T.getLine
     case M.lookup f dispatcher of
-      Just function -> run function n ls
+      Just function -> replicateM ls T.getLine >>=  B.putStr . run function n
+                      >> hFlush stdout >> main
       Nothing       -> main
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
-
-run :: (T.Text -> B.ByteString) -> T.Text -> Int -> IO ()
-run f n ls = do
-      result <- f . T.unlines <$> replicateM ls T.getLine
-      B.putStr (B.concat [ "("
-                         , B.pack . show $ B.length result - 5
-                         , " "
-                         , B.pack $ T.unpack n
-                         , result
-                         ])
-      hFlush stdout
-      main
+run :: (T.Text -> B.ByteString) -> T.Text -> [T.Text] -> B.ByteString
+run f n ls = B.concat [ "("
+                      , B.pack . show $ B.length result - 5
+                      , " "
+                      , B.pack $ T.unpack n
+                      , result
+                      ]
+        where result = f $ T.unlines ls
