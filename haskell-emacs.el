@@ -65,8 +65,7 @@
                              (concat haskell-emacs-dir ".HaskellEmacs"))))
       (set-process-query-on-exit-flag he/proc nil)
       (set-process-filter he/proc 'he/filter)
-      (mapc (lambda (fi) (mapc (lambda (fu) (eval (he/fun-wrapper fu)))
-                               fi))
+      (mapc (lambda (fi) (mapc (lambda (fu) (eval (he/fun-wrapper fu))) fi))
             exports))))
 
 (defun he/filter (proc str)
@@ -133,17 +132,11 @@
           a))
 
 (defun he/exports-format (l)
-  (let ((result
-         (apply 'concat
-                (mapcar
-                 (lambda (x)
-                   (if x
-                       (apply 'concat
-                              (mapcar
-                               (lambda (y) (concat "(\""y"\",transform "y"),"))
-                               x))
-                     ""))
-                 l))))
+  (let* ((t '(mapcar (lambda (y) (concat "(\""y"\",transform "y"),")) x))
+         (result (apply 'concat (mapcar (lambda (x) (if x
+                                                        (apply 'concat (eval t))
+                                                      ""))
+                                        l))))
     (if (> (length result) 0)
         (substring result 0 -1)
       "")))
@@ -174,12 +167,10 @@
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal (buffer-string)
-                          (with-temp-buffer
-                            (insert-file-contents heF)
-                            (buffer-string))))
+                          (with-temp-buffer (insert-file-contents heF)
+                                            (buffer-string))))
         (write-file heF))
-      (unless (equal 0 (call-process "ghc" nil heB
-                                     nil "-O2" "--make" heF))
+      (unless (equal 0 (call-process "ghc" nil heB nil "-O2" "--make" heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
