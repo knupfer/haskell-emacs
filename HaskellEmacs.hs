@@ -14,6 +14,7 @@ import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import qualified Data.Text.IO                as T
 import           System.IO                   (hFlush, stdout)
+import Data.Maybe
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
@@ -39,25 +40,21 @@ failure (Error s)   = B.pack $ " nil)" ++ s
 -- | Lookup functions given in stdin in the dispatcher.
 main :: IO ()
 main = do printer <- newEmptyMVar
-          _ <- forkIO (forever (takeMVar printer >>= B.putStrLn >> hFlush stdout))
-          forever (do
-                   (f,n,ls) <- extract <$> T.getLine
-                   maybe (error "This should not happen")
-                         (\function -> do
-                             xs <- replicateM ls T.getLine
-                             forkIO $
-                                   (\r -> (r `PS.using` PS.rdeepseq) `pseq`
-                                                putMVar printer r) $ run function n xs)
-                         $ M.lookup f dispatcher)
-     where extract = (\(x:y:z:_) -> (x,y,read $ T.unpack z)) . T.words
+          forkIO . forever $ takeMVar printer >>= B.putStrLn >> hFlush stdout
+          forever $
+            do (f,n,ls) <- extract <$> T.getLine
+               xs <- replicateM ls T.getLine
+               let r = run f n xs
+               forkIO $ (r `PS.using` PS.rdeepseq) `pseq` putMVar printer r
+       where extract = (\(x:y:z:_) -> (x, y, read $ T.unpack z)) . T.words
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
-run :: (T.Text -> B.ByteString) -> T.Text -> [T.Text] -> B.ByteString
-run f n ls = B.concat [ "("
+run :: T.Text -> T.Text -> [T.Text] -> B.ByteString
+run f n xs = B.concat [ "("
                       , B.pack . show $ (length . B.toString $ B.toStrict result) - 4
                       , " "
                       , B.pack $ T.unpack n
                       , result
                       ]
-        where result = f $ T.unlines ls
+        where result = fromJust (M.lookup f dispatcher) $ T.unlines xs
