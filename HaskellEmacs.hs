@@ -9,11 +9,21 @@ import           Data.Attoparsec.ByteString  (parseOnly)
 import qualified Data.ByteString.Lazy.Char8  as B
 import qualified Data.ByteString.UTF8        as B (fromString, toString)
 import qualified Data.Map                    as M
+import           Data.Maybe                  (fromJust)
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import qualified Data.Text.IO                as T
 import           System.IO                   (hFlush, stdout)
-import Data.Maybe
+
+-- | Lookup functions given in stdin in the dispatcher.
+main :: IO ()
+main = do printer <- newEmptyMVar
+          forkIO . forever $ takeMVar printer >>= B.putStrLn >> hFlush stdout
+          forever $
+            do (f,n,line) <- extract <$> T.getLine
+               xs         <- replicateM line T.getLine
+               let r = run f n xs
+               forkIO $ (r `using` rdeepseq) `seq` putMVar printer r
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
@@ -36,16 +46,8 @@ failure :: Result B.ByteString -> B.ByteString
 failure (Success s) = " yes)" <> s
 failure (Error s)   = B.pack $ " nil)" ++ s
 
--- | Lookup functions given in stdin in the dispatcher.
-main :: IO ()
-main = do printer <- newEmptyMVar
-          forkIO . forever $ takeMVar printer >>= B.putStrLn >> hFlush stdout
-          forever $
-            do (f,n,ls) <- extract <$> T.getLine
-               xs <- replicateM ls T.getLine
-               let r = run f n xs
-               forkIO $ (r `PS.using` PS.rdeepseq) `pseq` putMVar printer r
-       where extract = (\(x:y:z:_) -> (x, y, read $ T.unpack z)) . T.words
+extract :: T.Text -> (T.Text, T.Text, Int)
+extract = (\(x:y:z:_) -> (x, y, read $ T.unpack z)) . T.words
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
