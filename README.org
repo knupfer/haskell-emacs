@@ -22,8 +22,8 @@ identity n
 isIdentity :: [[Int]] -> Bool
 isIdentity xs = xs == identity (length xs)
 
-dyadic :: ([Int],[Int]) -> [[Int]]
-dyadic (xs,ys) = map (\x -> map (x*) ys) xs
+dyadic :: [Int] -> [Int] -> [[Int]]
+dyadic xs ys = map (\x -> map (x*) ys) xs
 #+END_SRC
 
 Add the directory of =haskell-emacs= to your emacs load path:
@@ -54,7 +54,7 @@ Now you're set to toy around with your new elisp functions:
 (Matrix.isIdentity '((1 0) (0 1)))
   => t
 
-(Matrix.dyadic '((1 2 3) (4 5 6)))
+(Matrix.dyadic '(1 2 3) '(4 5 6))
   => ((4 5 6) (8 10 12) (12 15 18))
 #+END_SRC
 
@@ -92,6 +92,7 @@ You'll need:
 - ghc
 - attoparsec
 - atto-lisp
+- show-text
 
 Thats all.
 
@@ -100,10 +101,6 @@ About 10 types are recognized as input, and about 10 types of output
 can be transformed into an elisp type.  Thats quite good, but not
 everything.  If you write a function with an unknown type,
 =haskell-emacs-init= will signal an error with the output from ghc.
-
-At the moment, only curried functions can be used, other types cause
-errors (again on run of =haskell-emacs-init=, so you'll notice
-immediately).
 
 Polymorphic types are not well supported and higher functions aren't
 supported at all, you can't pass functions as arguments to haskell

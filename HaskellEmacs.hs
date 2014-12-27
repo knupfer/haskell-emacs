@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 ---- <<import>> ----
 import           Control.Applicative         ((<$>))
-import           Control.Concurrent --
+import           Control.Concurrent
 import           Control.Monad               (forever, replicateM)
 import           Control.Parallel.Strategies (rdeepseq, using)
 import           Data.AttoLisp
