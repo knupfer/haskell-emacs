@@ -1,7 +1,8 @@
+{-# LANGUAGE FlexibleInstances, OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 ---- <<import>> ----
 import           Control.Applicative         ((<$>))
-import           Control.Concurrent
+import           Control.Concurrent --
 import           Control.Monad               (forever, replicateM)
 import           Control.Parallel.Strategies (rdeepseq, using)
 import           Data.AttoLisp
@@ -17,22 +18,40 @@ import qualified Data.Text.IO                as T
 import           System.IO                   (hFlush, stdout)
 import qualified Text.Show.Text              as T (show)
 
+class Arity f where
+  arity :: f -> Int
+
+instance Arity x where
+  arity _ = 0
+
+instance Arity f => Arity ((->) a f) where
+  arity f = 1 + arity (f undefined)
+
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = do printer <- newEmptyMVar
-          forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
-          forever $
-            do (f,n,line) <- extract <$> T.getLine
-               result     <- run f n <$> replicateM line T.getLine
-               forkIO $ (result `using` rdeepseq) `seq` putMVar printer result
+main = if not $ null arityList
+          then B.putStrLn $ encode arityList
+          else do
+           printer <- newEmptyMVar
+           forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
+           forever $
+             do (f,n,line) <- extract <$> T.getLine
+                result     <- run f n <$> replicateM line T.getLine
+                forkIO $ (result `using` rdeepseq) `seq` putMVar printer result
+
+arityList :: [Int]
+arityList =
+  [
+  ---- <<arity>> ----
+  ]
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
 dispatcher :: M.Map Text (Text -> Text)
 dispatcher = M.fromList
- [
- ---- <<export>> ----
- ]
+  [
+  ---- <<export>> ----
+  ]
 
 -- | Transform a curried function to a function which receives and
 -- returns a string in lisp syntax.
