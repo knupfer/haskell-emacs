@@ -54,11 +54,12 @@
                                          (concat "import qualified "
                                                  (substring f 0 -3) "\n"))))
                                    funs)))
-      (setq arity-list (he/arity (with-temp-buffer
-                                   (insert-file-contents
-                                    (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
-                                   (buffer-string))
-                                 imports (he/arity-format exports)))
+      (setq arity-list
+            (he/arity (with-temp-buffer
+                        (insert-file-contents
+                         (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
+                        (buffer-string))
+                      imports (he/arity-format exports)))
       (he/compile (with-temp-buffer
                     (insert-file-contents
                      (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
@@ -74,16 +75,17 @@
       (set-process-filter he/proc 'he/filter)
       (mapc (lambda (fi)
               (mapc (lambda (fu)
-                      (eval (he/fun-wrapper fu
-                                            (let ((c 1)
-                                                  (arity (pop arity-list))
-                                                  (args))
-                                              (progn (while (<= c arity)
-                                                       (setq args
-                                                             (concat args " x"
-                                                                     (number-to-string c)))
-                                                       (setq c (+ c 1)))
-                                                     (concat "(" (substring args 1) ")"))))))
+                      (eval (he/fun-wrapper
+                             fu
+                             (let ((c 1)
+                                   (arity (pop arity-list))
+                                   (args))
+                               (progn (while (<= c arity)
+                                        (setq args
+                                              (concat args " x"
+                                                      (number-to-string c)))
+                                        (setq c (+ c 1)))
+                                      (concat "(" (substring args 1) ")"))))))
                     fi))
             exports))))
 
@@ -114,22 +116,23 @@
 (defun he/fun-body (fun args)
   "Generate function body for FUN."
   (let ((arguments))
-    (setq arguments (mapcar (lambda (ARG)
-                              (if (stringp ARG)
-                                  (format "%S" (substring-no-properties ARG))
-                                (if (or (listp ARG) (arrayp ARG))
-                                    (concat "("
-                                            (apply 'concat (mapcar (lambda (x)
-                                                                     (concat (format "%S" x) "\n"))
-                                                                   (he/array-to-list ARG))) ")")
-                                  (format "%S" ARG))))
-                            args))
+    (setq arguments
+          (mapcar (lambda (ARG)
+                    (if (stringp ARG)
+                        (format "%S" (substring-no-properties ARG))
+                      (if (or (listp ARG) (arrayp ARG))
+                          (concat "("
+                                  (apply 'concat
+                                         (mapcar (lambda (x)
+                                                   (concat (format "%S" x) "\n"))
+                                                 (he/array-to-list ARG))) ")")
+                        (format "%S" ARG))))
+                  args))
     (setq he/count (+ 1 he/count))
     (if (equal 1 (length arguments))
         (setq arguments (car arguments))
       (let ((buf))
-        (setq arguments (mapcar (lambda (x) (concat x " "))
-                                arguments))
+        (setq arguments (mapcar (lambda (x) (concat x " ")) arguments))
         (setq arguments (concat "(" (apply 'concat arguments) ")"))))
     (setq DEBUG-ARGS arguments)
     (process-send-string
@@ -146,10 +149,10 @@
 (defun he/fun-wrapper (fun args)
   "Take FUN and return wrappers in elisp."
   (let ((body `(he/fun-body ,fun ,(read (concat "(list " (substring args 1))))))
-    `(progn (byte-compile (defun ,(intern fun) ,(read args) ,body
-                                 (he/get he/count)))
-            (byte-compile (defun ,(intern (concat fun "-async")) ,(read args) ,body
-                                 `(he/get ,he/count))))))
+    `(progn (byte-compile (defun ,(intern fun) ,(read args)
+                            ,body (he/get he/count)))
+            (byte-compile (defun ,(intern (concat fun "-async")) ,(read args)
+                            ,body `(he/get ,he/count))))))
 
 (defun he/get (id)
   "Retrieve result from haskell process with ID."
@@ -174,25 +177,28 @@
 
 (defun he/exports-format (list-of-exports list-of-arity)
   "Take a LIST-OF-EXPORTS and format it into haskell syntax."
-  (let* ((tr '(mapcar (lambda (y)
-                        (let ((arity (pop list-of-arity))
-                              (args) (args2) (c 1))
-                          (concat "(\""y"\",transform "
-                                  (if (equal 1 arity)
-                                      y
-                                    (concat
-                                     "(\\\\"
-                                     (progn (while (<= c arity)
-                                              (setq args
-                                                    (concat args ",x" (number-to-string c)))
-                                              (setq args2
-                                                    (concat args2 " x" (number-to-string c)))
-                                              (setq c (+ c 1)))
-                                            (concat "(" (substring args 1) ") -> " y
-                                                    " " args2 ))
-                                     ")"))
-                                  "),")))
-                      x))
+  (let* ((tr '(mapcar
+               (lambda (y)
+                 (let ((arity (pop list-of-arity))
+                       (args) (args2) (c 1))
+                   (concat "(\""y"\",transform "
+                           (if (equal 1 arity)
+                               y
+                             (concat
+                              "(\\\\"
+                              (progn (while (<= c arity)
+                                       (setq args
+                                             (concat args ",x"
+                                                     (number-to-string c)))
+                                       (setq args2
+                                             (concat args2 " x"
+                                                     (number-to-string c)))
+                                       (setq c (+ c 1)))
+                                     (concat "(" (substring args 1) ") -> " y
+                                             " " args2))
+                              ")"))
+                           "),")))
+               x))
          (result (apply 'concat (mapcar (lambda (x) (apply 'concat (eval tr)))
                                         list-of-exports))))
     (if (> (length result) 0)
