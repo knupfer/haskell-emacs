@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 ---- <<import>> ----
-import           Control.Applicative
+import           Control.Applicative         ((<$>))
 import           Control.Concurrent
-import           Control.Monad
-import           Control.Parallel
-import qualified Control.Parallel.Strategies as PS
+import           Control.Monad               (forever, replicateM)
+import           Control.Parallel.Strategies (rdeepseq, using)
 import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString  as A (parseOnly)
+import           Data.Attoparsec.ByteString  (parseOnly)
 import qualified Data.ByteString.Lazy.Char8  as B
 import qualified Data.ByteString.UTF8        as B (fromString, toString)
 import qualified Data.Map                    as M
@@ -29,7 +28,7 @@ dispatcher = M.fromList
 transform :: (FromLisp a, ToLisp b) => (a -> b) -> T.Text -> B.ByteString
 transform f = either (B.pack . (++) " nil)")
                       (failure . fmap (encode . f) . fromLisp)
-                      . A.parseOnly lisp . B.fromString . T.unpack
+                      . parseOnly lisp . B.fromString . T.unpack
 
 -- | Retrieves the contents of the result and annotates whether it was
 -- a success.
@@ -51,10 +50,13 @@ main = do printer <- newEmptyMVar
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
 run :: T.Text -> T.Text -> [T.Text] -> B.ByteString
-run f n xs = B.concat [ "("
-                      , B.pack . show $ (length . B.toString $ B.toStrict result) - 4
-                      , " "
-                      , B.pack $ T.unpack n
-                      , result
-                      ]
+run f n xs = B.concat
+               [ "("
+               , B.pack . show . length
+                               . dropWhile (/=')')
+                               . B.toString $ B.toStrict result
+               , " "
+               , B.pack $ T.unpack n
+               , result
+               ]
         where result = fromJust (M.lookup f dispatcher) $ T.unlines xs
