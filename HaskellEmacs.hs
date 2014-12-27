@@ -32,12 +32,12 @@ main :: IO ()
 main = if not $ null arityList
           then B.putStrLn $ encode arityList
           else do
-           printer <- newEmptyMVar
-           forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
-           forever $
-             do (f,n,line) <- extract <$> T.getLine
-                result     <- run f n <$> replicateM line T.getLine
-                forkIO $ (result `using` rdeepseq) `seq` putMVar printer result
+            printer <- newEmptyMVar
+            forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
+            forever $
+              do (f,n,line) <- extract <$> T.getLine
+                 result     <- run f n <$> replicateM line T.getLine
+                 forkIO $ (result `using` rdeepseq) `seq` putMVar printer result
 
 arityList :: [Int]
 arityList =
