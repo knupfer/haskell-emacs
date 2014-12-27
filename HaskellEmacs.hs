@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleInstances, OverlappingInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE OverloadedStrings    #-}
 ---- <<import>> ----
 import           Control.Applicative         ((<$>))
 import           Control.Concurrent
