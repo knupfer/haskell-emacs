@@ -63,7 +63,7 @@
       (let ((process-connection-type nil))
         (setq he/proc
               (start-process "hask" nil
-                             (concat haskell-emacs-dir ".HaskellEmacs") "+RTS" "-N2")))
+                             (concat haskell-emacs-dir ".HaskellEmacs"))))
       (set-process-query-on-exit-flag he/proc nil)
       (set-process-filter he/proc 'he/filter)
       (mapc (lambda (fi) (mapc (lambda (fu) (eval (he/fun-wrapper fu))) fi))
@@ -176,7 +176,9 @@
                           (with-temp-buffer (insert-file-contents heF)
                                             (buffer-string))))
         (write-file heF))
-      (unless (equal 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make" heF))
+      (unless (equal 0 (call-process "ghc" nil heB nil
+                                     "-O2" "-threaded" "--make"
+                                     "-with-rtsopts=-N2" heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
