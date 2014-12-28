@@ -29,8 +29,24 @@
 
 ;;; Code:
 
-(defvar haskell-emacs-load-dir (file-name-directory load-file-name))
-(defvar haskell-emacs-dir "~/.emacs.d/haskell-fun/")
+(defgroup haskell-emacs nil
+  "FFI for using haskell in emacs."
+  :group 'haskell)
+
+(eval `(defcustom haskell-emacs-load-dir ,(file-name-directory load-file-name)
+         "Directory with source code of HaskellEmacs.hs."
+         :group 'haskell-emacs
+         :type 'string))
+
+(defcustom haskell-emacs-dir "~/.emacs.d/haskell-fun/"
+  "Directory with haskell modules."
+  :group 'haskell-emacs
+  :type 'string)
+
+(defcustom haskell-emacs-cores 2
+  "Number of cores used for haskell Emacs."
+  :group 'haskell-emacs
+  :type 'integer)
 
 (defvar he/response nil)
 (defvar he/count 0)
@@ -241,9 +257,12 @@
                           (with-temp-buffer (insert-file-contents heF)
                                             (buffer-string))))
         (write-file heF))
-      (unless (equal 0 (call-process "ghc" nil heB nil
-                                     "-O2" "-threaded" "--make"
-                                     "-with-rtsopts=-N2" heF))
+      (unless
+          (equal 0 (call-process "ghc" nil heB nil
+                                 "-O2" "-threaded" "--make"
+                                 (concat "-with-rtsopts=-N"
+                                         (number-to-string haskell-emacs-cores))
+                                 heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
