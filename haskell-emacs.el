@@ -58,54 +58,48 @@
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (mkdir haskell-emacs-dir t))
-  (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$")))
-    (let ((imports)
-          (exports)
-          (arity-list))
-      (setq imports (apply 'concat
-                           (mapcar (lambda (f)
-                                     (let ((ex (he/exports-get f)))
-                                       (when ex
-                                         (add-to-list 'exports ex)
-                                         (concat "import qualified "
-                                                 (substring f 0 -3) "\n"))))
-                                   funs)))
-      (setq arity-list
-            (he/arity (with-temp-buffer
-                        (insert-file-contents
-                         (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
-                        (buffer-string))
-                      imports (he/arity-format exports)))
-      (he/compile (with-temp-buffer
-                    (insert-file-contents
-                     (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
-                    (buffer-string))
-                  imports (he/exports-format exports arity-list))
-      (when he/proc
-        (delete-process he/proc))
-      (let ((process-connection-type nil))
-        (setq he/proc
-              (start-process "hask" nil
-                             (concat haskell-emacs-dir ".HaskellEmacs"))))
-      (set-process-query-on-exit-flag he/proc nil)
-      (set-process-filter he/proc 'he/filter)
-      (mapc (lambda (fi)
-              (mapc (lambda (fu)
-                      (eval (he/fun-wrapper
-                             fu
-                             (let ((c 1)
-                                   (arity (pop arity-list))
-                                   (args))
-                               (if (equal 0 arity)
-                                   "()"
-                                 (progn (while (<= c arity)
-                                          (setq args
-                                                (concat args " x"
-                                                        (number-to-string c)))
-                                          (setq c (+ c 1)))
-                                        (concat "(" args ")")))))))
-                    fi))
-            exports))))
+  (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$"))
+        (process-connection-type nil)
+        (imports)
+        (exports)
+        (arity-list)
+        (code (with-temp-buffer
+                (insert-file-contents
+                 (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
+                (buffer-string))))
+    (setq imports (apply 'concat
+                         (mapcar (lambda (f)
+                                   (let ((ex (he/exports-get f)))
+                                     (when ex
+                                       (add-to-list 'exports ex)
+                                       (concat "import qualified "
+                                               (substring f 0 -3) "\n"))))
+                                 funs)))
+    (setq arity-list (he/arity code imports (he/arity-format exports)))
+    (he/compile code imports (he/exports-format exports arity-list))
+    (when he/proc
+      (delete-process he/proc))
+    (setq he/proc (start-process "hask" nil
+                                 (concat haskell-emacs-dir ".HaskellEmacs")))
+    (set-process-query-on-exit-flag he/proc nil)
+    (set-process-filter he/proc 'he/filter)
+    (mapc (lambda (fi)
+            (mapc (lambda (fu)
+                    (eval (he/fun-wrapper
+                           fu
+                           (let ((c 1)
+                                 (arity (pop arity-list))
+                                 (args))
+                             (if (equal 0 arity)
+                                 "()"
+                               (progn (while (<= c arity)
+                                        (setq args
+                                              (concat args " x"
+                                                      (number-to-string c)))
+                                        (setq c (+ c 1)))
+                                      (concat "(" args ")")))))))
+                  fi))
+          exports)))
 
 (defun he/filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
@@ -132,28 +126,28 @@
         (setq header (read he/response))))))
 
 (defun he/fun-body (fun args)
-  "Generate function body for FUN."
+  "Generate function body for FUN with ARGS."
   (let ((arguments))
     (setq he/count (+ 1 he/count))
     (if (not args)
         (setq arguments "0")
       (setq arguments
-            (mapcar (lambda (ARG)
-                      (if (stringp ARG)
-                          (format "%S" (substring-no-properties ARG))
-                        (if (or (listp ARG) (arrayp ARG))
-                            (concat "("
-                                    (apply 'concat
-                                           (mapcar (lambda (x)
-                                                     (concat (format "%S" x) "\n"))
-                                                   (he/array-to-list ARG))) ")")
-                          (format "%S" ARG))))
-                    args))
+            (mapcar
+             (lambda (ARG)
+               (if (stringp ARG)
+                   (format "%S" (substring-no-properties ARG))
+                 (if (or (listp ARG) (arrayp ARG))
+                     (concat "("
+                             (apply 'concat
+                                    (mapcar (lambda (x)
+                                              (concat (format "%S" x) "\n"))
+                                            (he/array-to-list ARG))) ")")
+                   (format "%S" ARG))))
+             args))
       (if (equal 1 (length arguments))
           (setq arguments (car arguments))
-        (let ((buf))
-          (setq arguments (mapcar (lambda (x) (concat x " ")) arguments))
-          (setq arguments (concat "(" (apply 'concat arguments) ")")))))
+        (setq arguments (mapcar (lambda (x) (concat x " ")) arguments))
+        (setq arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
      he/proc (concat fun " " (number-to-string he/count) " "
                      (number-to-string
@@ -166,7 +160,7 @@
                      "\n" arguments "\n"))))
 
 (defun he/fun-wrapper (fun args)
-  "Take FUN and return wrappers in elisp."
+  "Take FUN with ARGS and return wrappers in elisp."
   (let ((body `(he/fun-body ,fun ,(read (concat "(list " (substring args 1))))))
     `(progn (byte-compile (defun ,(intern fun) ,(read args)
                             ,body (he/get he/count)))
@@ -195,7 +189,7 @@
       "")))
 
 (defun he/exports-format (list-of-exports list-of-arity)
-  "Take a LIST-OF-EXPORTS and format it into haskell syntax."
+  "Format LIST-OF-EXPORTS and LIST-OF-ARITY into haskell syntax."
   (let* ((tr '(mapcar
                (lambda (y)
                  (let ((arity (pop list-of-arity))
