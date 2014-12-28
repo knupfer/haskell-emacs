@@ -101,17 +101,17 @@
   "Haskell PROCESS filter for OUTPUT from functions."
   (setq he/response (concat he/response output))
   (let* ((header (read he/response))
-         (headLen (length (format "%s" header))))
-    (while (<= (+ (car header) headLen)
+         (headLen (+ (car header) (length (format "%s" header)))))
+    (while (<= headLen
                (length he/response))
-      (let ((content (substring he/response headLen (+ headLen (car header)))))
-        (setq he/response (substring he/response (+ headLen (car header))))
+      (let ((content (substring he/response (- headLen (car header)) headLen)))
+        (setq he/response (substring he/response headLen))
         (unless (car (last header))
           (error content))
         (puthash (cadr header) content he/table)
         (when (> (length he/response) 7)
           (setq header (read he/response)
-                headLen (length (format "%s" header))))))))
+                headLen (+ (car header) (length (format "%s" header)))))))))
 
 (defun he/fun-body (fun args)
   "Generate function body for FUN with ARGS."
@@ -125,17 +125,16 @@
                (if (stringp ARG)
                    (format "%S" (substring-no-properties ARG))
                  (if (or (listp ARG) (arrayp ARG))
-                     (concat "("
-                             (apply 'concat
-                                    (mapcar (lambda (x)
-                                              (concat (format "%S" x) "\n"))
-                                            (he/array-to-list ARG))) ")")
+                     (concat "(" (apply 'concat
+                                        (mapcar (lambda (x)
+                                                  (concat (format "%S" x) "\n"))
+                                                (he/array-to-list ARG))) ")")
                    (format "%S" ARG))))
              args))
-      (if (equal 1 (length arguments))
+      (if (eql 1 (length arguments))
           (setq arguments (car arguments))
-        (setq arguments (mapcar (lambda (x) (concat x " ")) arguments))
-        (setq arguments (concat "(" (apply 'concat arguments) ")"))))
+        (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
+              arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
      he/proc (concat fun " " (number-to-string he/count) " "
                      (number-to-string
