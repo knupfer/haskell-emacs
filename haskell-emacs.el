@@ -81,6 +81,11 @@
     (he/compile code imports (he/exports-format exports arity-list) nil)
     (setq he/proc (start-process "hask" nil
                                  (concat haskell-emacs-dir ".HaskellEmacs")))
+    (set-process-sentinel he/proc (lambda (proc sign)
+                                    (setq he/response nil)
+                                    (haskell-emacs-init)
+                                    (let ((debug-on-error t))
+                                      (error "Haskell emacs crashed and was restarted."))))
     (set-process-query-on-exit-flag he/proc nil)
     (set-process-filter he/proc 'he/filter)
     (mapc (lambda (fi)
