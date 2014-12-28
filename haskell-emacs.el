@@ -78,27 +78,20 @@
                                                (substring f 0 -3) "\n"))))
                                  funs))
           arity-list (he/compile code imports (he/arity-format exports) t))
-    (he/compile code imports (he/exports-format exports arity-list) nil)
+    (he/compile code imports (pop arity-list) nil)
     (setq he/proc (start-process "hask" nil
                                  (concat haskell-emacs-dir ".HaskellEmacs")))
-    (set-process-sentinel he/proc (lambda (proc sign)
-                                    (setq he/response nil)
-                                    (haskell-emacs-init)
-                                    (let ((debug-on-error t))
-                                      (error "Haskell emacs crashed and was restarted."))))
+    (set-process-sentinel
+     he/proc (lambda (proc sign)
+               (setq he/response nil)
+               (haskell-emacs-init)
+               (let ((debug-on-error t))
+                 (error "Haskell emacs crashed and was restarted."))))
     (set-process-query-on-exit-flag he/proc nil)
     (set-process-filter he/proc 'he/filter)
+    (setq arity-list (car arity-list))
     (mapc (lambda (fi)
-            (mapc (lambda (fu)
-                    (eval (he/fun-wrapper
-                           fu
-                           (let ((arity (pop arity-list))
-                                 (args))
-                             (if (equal 0 arity)
-                                 "()"
-                               (dotimes (c arity (concat "(" args ")"))
-                                 (setq args (concat args " x"
-                                                    (number-to-string c)))))))))
+            (mapc (lambda (fu) (eval (he/fun-wrapper fu (pop arity-list))))
                   fi))
           exports)))
 
@@ -173,34 +166,7 @@
 
 (defun he/arity-format (list-of-exports)
   "Take a LIST-OF-EXPORTS and format it into an arity check."
-  (let* ((tr '(mapcar (lambda (y) (concat "arity "y",")) x))
-         (result (apply 'concat (mapcar (lambda (x) (apply 'concat (eval tr)))
-                                        list-of-exports))))
-    (if (> (length result) 0)
-        (substring result 0 -1)
-      "")))
-
-(defun he/exports-format (list-of-exports list-of-arity)
-  "Format LIST-OF-EXPORTS and LIST-OF-ARITY into haskell syntax."
-  (let* ((tr '(mapcar
-               (lambda (y)
-                 (let ((arity (pop list-of-arity))
-                       (args) (args2))
-                   (concat "(\""y"\",transform "
-                           (case arity
-                             (0 (concat "((const :: a -> Int -> a) " y ")"))
-                             (1 y)
-                             (t (concat
-                                 "(\\\\"
-                                 (dotimes (c arity (concat "(" (substring args 1)
-                                                           ") -> " y " " args2))
-                                   (setq args (concat args ",x"
-                                                      (number-to-string c))
-                                         args2 (concat args2 " x"
-                                                       (number-to-string c))))
-                                 ")")))
-                           "),")))
-               x))
+  (let* ((tr '(mapcar (lambda (y) (concat "(\"" y "\"," "arity "y"),")) x))
          (result (apply 'concat (mapcar (lambda (x) (apply 'concat (eval tr)))
                                         list-of-exports))))
     (if (> (length result) 0)
@@ -231,12 +197,12 @@
       (insert code)
       (goto-char (point-min))
       (when (re-search-forward "---- <<import>> ----" nil t)
-        (replace-match import))
+        (replace-match import t t))
       (when (re-search-forward (if arity
                                    "---- <<arity>> ----"
                                  "---- <<export>> ----")
                                nil t)
-        (replace-match export))
+        (replace-match export t t))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal (buffer-string)
