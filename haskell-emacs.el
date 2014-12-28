@@ -183,19 +183,18 @@
                  (let ((arity (pop list-of-arity))
                        (args) (args2))
                    (concat "(\""y"\",transform "
-                           (if (equal 0 arity)
-                               (concat "((const :: a -> Int -> a) " y ")")
-                             (if (equal 1 arity)
-                                 y
-                               (concat
-                                "(\\\\"
-                                (dotimes (c arity (concat "(" (substring args 1)
-                                                          ") -> " y " " args2))
-                                  (setq args (concat args ",x"
-                                                     (number-to-string c))
-                                        args2 (concat args2 " x"
-                                                      (number-to-string c))))
-                                ")")))
+                           (case arity
+                             (0 (concat "((const :: a -> Int -> a) " y ")"))
+                             (1 y)
+                             (t (concat
+                                 "(\\\\"
+                                 (dotimes (c arity (concat "(" (substring args 1)
+                                                           ") -> " y " " args2))
+                                   (setq args (concat args ",x"
+                                                      (number-to-string c))
+                                         args2 (concat args2 " x"
+                                                       (number-to-string c))))
+                                 ")")))
                            "),")))
                x))
          (result (apply 'concat (mapcar (lambda (x) (apply 'concat (eval tr)))
@@ -236,11 +235,11 @@
                                             (buffer-string))))
         (write-file heF))
       (unless
-          (equal 0 (call-process "ghc" nil heB nil
-                                 "-O2" "-threaded" "--make"
-                                 (concat "-with-rtsopts=-N"
-                                         (number-to-string haskell-emacs-cores))
-                                 heF))
+          (eql 0 (call-process "ghc" nil heB nil
+                               "-O2" "-threaded" "--make"
+                               (concat "-with-rtsopts=-N"
+                                       (number-to-string haskell-emacs-cores))
+                               heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
@@ -263,7 +262,7 @@
                           (with-temp-buffer (insert-file-contents heF)
                                             (buffer-string))))
         (write-file heF))
-      (unless (equal 0 (call-process "ghc" nil heB nil "--make" heF))
+      (unless (eql 0 (call-process "ghc" nil heB nil "--make" heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
