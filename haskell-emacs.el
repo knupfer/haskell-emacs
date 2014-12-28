@@ -67,6 +67,8 @@
                 (insert-file-contents
                  (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
                 (buffer-string))))
+    (when he/proc
+      (delete-process he/proc))
     (setq imports (apply 'concat
                          (mapcar (lambda (f)
                                    (let ((ex (he/exports-get f)))
@@ -74,11 +76,9 @@
                                        (add-to-list 'exports ex)
                                        (concat "import qualified "
                                                (substring f 0 -3) "\n"))))
-                                 funs)))
-    (setq arity-list (he/arity code imports (he/arity-format exports)))
+                                 funs))
+          arity-list (he/arity code imports (he/arity-format exports)))
     (he/compile code imports (he/exports-format exports arity-list))
-    (when he/proc
-      (delete-process he/proc))
     (setq he/proc (start-process "hask" nil
                                  (concat haskell-emacs-dir ".HaskellEmacs")))
     (set-process-query-on-exit-flag he/proc nil)
@@ -87,43 +87,31 @@
             (mapc (lambda (fu)
                     (eval (he/fun-wrapper
                            fu
-                           (let ((c 1)
-                                 (arity (pop arity-list))
+                           (let ((arity (pop arity-list))
                                  (args))
                              (if (equal 0 arity)
                                  "()"
-                               (progn (while (<= c arity)
-                                        (setq args
-                                              (concat args " x"
-                                                      (number-to-string c)))
-                                        (setq c (+ c 1)))
-                                      (concat "(" args ")")))))))
+                               (dotimes (c arity (concat "(" args ")"))
+                                 (setq args (concat args " x"
+                                                    (number-to-string c)))))))))
                   fi))
           exports)))
 
 (defun he/filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
   (setq he/response (concat he/response output))
-  (let ((header (read he/response)))
-    (while (<= (+ (car header) (length (format "%s" header)))
+  (let* ((header (read he/response))
+         (headLen (length (format "%s" header))))
+    (while (<= (+ (car header) headLen)
                (length he/response))
-      (unless (car (last header))
-        (let ((bug (substring he/response
-                              (length (format "%s" header))
-                              (+ (length (format "%s" header)) (car header)))))
-          (setq he/response (substring he/response
-                                       (+ (length (format "%s" header))
-                                          (car header))))
-          (error bug)))
-      (puthash (cadr header)
-               (substring he/response
-                          (length (format "%s" header))
-                          (+ (length (format "%s" header)) (car header)))
-               he/table)
-      (setq he/response (substring he/response (+ (length (format "%s" header))
-                                                  (car header))))
-      (when (> (length he/response) 7)
-        (setq header (read he/response))))))
+      (let ((content (substring he/response headLen (+ headLen (car header)))))
+        (setq he/response (substring he/response (+ headLen (car header))))
+        (unless (car (last header))
+          (error content))
+        (puthash (cadr header) content he/table)
+        (when (> (length he/response) 7)
+          (setq header (read he/response)
+                headLen (length (format "%s" header))))))))
 
 (defun he/fun-body (fun args)
   "Generate function body for FUN with ARGS."
@@ -193,7 +181,7 @@
   (let* ((tr '(mapcar
                (lambda (y)
                  (let ((arity (pop list-of-arity))
-                       (args) (args2) (c 1))
+                       (args) (args2))
                    (concat "(\""y"\",transform "
                            (if (equal 0 arity)
                                (concat "((const :: a -> Int -> a) " y ")")
@@ -201,16 +189,12 @@
                                  y
                                (concat
                                 "(\\\\"
-                                (progn (while (<= c arity)
-                                         (setq args
-                                               (concat args ",x"
-                                                       (number-to-string c)))
-                                         (setq args2
-                                               (concat args2 " x"
-                                                       (number-to-string c)))
-                                         (setq c (+ c 1)))
-                                       (concat "(" (substring args 1) ") -> " y
-                                               " " args2))
+                                (dotimes (c arity (concat "(" (substring args 1)
+                                                          ") -> " y " " args2))
+                                  (setq args (concat args ",x"
+                                                     (number-to-string c))
+                                        args2 (concat args2 " x"
+                                                      (number-to-string c))))
                                 ")")))
                            "),")))
                x))
@@ -279,8 +263,7 @@
                           (with-temp-buffer (insert-file-contents heF)
                                             (buffer-string))))
         (write-file heF))
-      (unless (equal 0 (call-process "ghc" nil heB nil
-                                     "--make" heF))
+      (unless (equal 0 (call-process "ghc" nil heB nil "--make" heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
