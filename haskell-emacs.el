@@ -134,15 +134,8 @@
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
-     he/proc (concat fun " " (number-to-string he/count) " "
-                     (number-to-string
-                      (with-temp-buffer (insert arguments)
-                                        (let ((lines 1))
-                                          (goto-char (point-min))
-                                          (while (re-search-forward "\n" nil t)
-                                            (setq lines (+ lines 1)))
-                                          lines)))
-                     "\n" arguments "\n")))
+     he/proc (concat fun " " (number-to-string he/count) "\n"
+                     arguments "\n")))
   (list 'he/get he/count))
 
 (defun he/fun-wrapper (fun args)
