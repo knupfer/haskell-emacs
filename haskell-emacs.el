@@ -66,12 +66,13 @@
         (code (with-temp-buffer
                 (insert-file-contents
                  (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
-                (buffer-string))))
+                (buffer-string)))
+        (start-proc '(progn (when he/proc (delete-process he/proc))
+                            (setq he/proc (start-process "hask" nil heE))
+                            (set-process-filter he/proc 'he/filter))))
     (unless (file-exists-p heE)
       (he/compile code))
-    (when he/proc (delete-process he/proc))
-    (setq he/proc (start-process "hask" nil heE))
-    (set-process-filter he/proc 'he/filter)
+    (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
                                      (insert-file-contents
                                       (concat haskell-emacs-dir f))
@@ -81,36 +82,30 @@
     (dotimes (a 2)
       (setq arity-list (eval (he/fun-body "arityList" nil)))
       (he/compile
-       (eval
-        (he/fun-body "formatCode"
-                     (list code (car funs)
-                           (car arity-list)
-                           (eval (he/fun-body "arityFormat"
-                                              (list (cadr funs))))))))
-      (delete-process he/proc)
-      (setq he/proc (start-process "hask" nil heE))
-      (set-process-filter he/proc 'he/filter))
+       (eval (he/fun-body "formatCode" (list code (car funs)
+                                             (car arity-list)
+                                             (eval (he/fun-body "arityFormat"
+                                                                (cdr funs)))))))
+      (eval start-proc))
     (set-process-sentinel he/proc (lambda (proc sign)
                                     (setq he/response nil)
                                     (haskell-emacs-init)
                                     (let ((debug-on-error t))
                                       (error "Haskell emacs crashed."))))
     (set-process-query-on-exit-flag he/proc nil)
-    (setq arity-list (cadr arity-list))
-    (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity-list))))
-          (cadr funs))))
+    (let ((arity (cadr arity-list)))
+      (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity))))
+            (cadr funs)))))
 
 (defun he/filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
   (setq he/response (concat he/response output))
   (let* ((header (read he/response))
          (headLen (+ (car header) (length (format "%s" header)))))
-    (while (<= headLen
-               (length he/response))
+    (while (<= headLen (length he/response))
       (let ((content (substring he/response (- headLen (car header)) headLen)))
         (setq he/response (substring he/response headLen))
-        (unless (car (last header))
-          (error content))
+        (unless (car (last header)) (error content))
         (puthash (cadr header) content he/table)
         (when (> (length he/response) 7)
           (setq header (read he/response)
@@ -178,19 +173,18 @@
     (let ((heB "*HASKELL-BUFFER*"))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
-                   (equal code
-                          (with-temp-buffer (insert-file-contents heF)
-                                            (buffer-string))))
-	(insert code)
+                   (equal code (with-temp-buffer (insert-file-contents heF)
+                                                 (buffer-string))))
+        (insert code)
         (write-file heF))
-      (unless (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
-                                   (concat "-with-rtsopts=-N"
-                                           (number-to-string haskell-emacs-cores))
-                                   heF))
+      (if (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
+                               (concat "-with-rtsopts=-N"
+                                       (number-to-string haskell-emacs-cores))
+                               heF))
+          (kill-buffer heB)
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
-          (error bug)))
-      (kill-buffer heB))))
+          (error bug))))))
 
 (provide 'haskell-emacs)
 
