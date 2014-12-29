@@ -34,16 +34,12 @@ main :: IO ()
 main = do printer <- newEmptyMVar
           forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
           forever $ do (f,n) <- extract <$> T.getLine
-                       r     <- run f n <$> myParse
+                       r     <- run f n <$> loop (A.parse lisp "")
                        forkIO $ (r `using` rdeepseq) `seq` putMVar printer r
-  where
-     myParse = loop $ A.parse lisp ""
-     loop x = case x of
-                      A.Done _ b -> return b
-                      A.Partial _ -> do
-                               li <- B.getLine
-                               loop $ A.feed x (li <> "\n")
-                      A.Fail{} -> error "beep"
+  where loop x =
+          case x of A.Done _ l  -> return l
+                    A.Partial _ -> B.getLine >>= loop . A.feed x . flip (<>) "\n"
+                    A.Fail{}    -> error "beep"
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher xs = ( T.intercalate "," $ map fun xs
