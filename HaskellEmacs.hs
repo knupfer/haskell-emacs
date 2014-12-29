@@ -2,14 +2,14 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 ---- <<import>> ----
-import           Control.Applicative         ((<$>))
+import           Control.Applicative         ((<$>),many)
 import           Control.Concurrent
-import           Control.Monad               (forever)
+import           Control.Monad               (forever, mapM_)
 import           Control.Parallel.Strategies (rdeepseq, using)
 import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString  as A
+import qualified Data.Attoparsec.ByteString.Char8  as A
 import qualified Data.ByteString.Lazy.Char8  as B
-import qualified Data.ByteString             as B
+import qualified Data.ByteString             as BS
 import qualified Data.Map                    as M
 import           Data.Maybe                  (fromJust)
 import           Data.Monoid                 ((<>))
@@ -33,13 +33,21 @@ instance Arity f => Arity ((->) a f) where
 main :: IO ()
 main = do printer <- newEmptyMVar
           forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
-          forever $ do (f,n) <- extract <$> T.getLine
-                       r     <- run f n <$> loop (A.parse lisp "")
+          forever $ do r <- loop (extract "")
                        forkIO $ (r `using` rdeepseq) `seq` putMVar printer r
   where loop x =
           case x of A.Done _ l  -> return l
-                    A.Partial _ -> B.getLine >>= loop . A.feed x . flip (<>) "\n"
+                    A.Partial _ -> BS.getLine >>= loop . A.feed x . flip (<>) "\n"
                     A.Fail{}    -> error "beep"
+
+extract :: BS.ByteString -> A.Result Text
+extract = A.parse $ do
+  a <- A.takeTill (==' ')
+  _ <- A.space
+  b <- A.takeTill (==' ')
+  _ <- A.space
+  c <- lisp
+  return (run (decodeUtf8 a) (decodeUtf8 b) c)
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher xs = ( T.intercalate "," $ map fun xs
@@ -102,9 +110,6 @@ transform f = toText
 failure :: Result Text -> Text
 failure (Success s) = " yes)" <> s
 failure (Error s)   = T.pack $ " nil)" ++ s
-
-extract :: Text -> (Text, Text)
-extract = (\(x:y:_) -> (x, y)) . T.words
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.

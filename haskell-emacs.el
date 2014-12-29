@@ -134,7 +134,7 @@
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
-     he/proc (concat fun " " (number-to-string he/count) "\n"
+     he/proc (concat fun " " (number-to-string he/count) " "
                      arguments "\n")))
   (list 'he/get he/count))
 
