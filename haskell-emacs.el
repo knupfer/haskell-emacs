@@ -61,20 +61,16 @@
   (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$"))
         (process-connection-type nil)
         (arity-list)
+        (heF ".HaskellEmacs.hs")
+        (heE (concat haskell-emacs-dir ".HaskellEmacs"))
         (code (with-temp-buffer
                 (insert-file-contents
                  (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
                 (buffer-string))))
-    (when he/proc
-      (delete-process he/proc))
-    (unless (file-exists-p (concat haskell-emacs-dir ".HaskellEmacs"))
-      (with-temp-buffer
-        (insert code)
-        (write-file (concat haskell-emacs-dir ".HaskellEmacs.hs"))
-	(cd haskell-emacs-dir)
-        (call-process "ghc" nil nil nil "--make" ".HaskellEmacs.hs")))
-    (setq he/proc (start-process "hask" nil
-                                 (concat haskell-emacs-dir ".HaskellEmacs")))
+    (unless (file-exists-p heE)
+      (he/compile code))
+    (when he/proc (delete-process he/proc))
+    (setq he/proc (start-process "hask" nil heE))
     (set-process-filter he/proc 'he/filter)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
                                      (insert-file-contents
@@ -83,22 +79,24 @@
                        funs)
           funs (eval (he/fun-body "allExports" (list funs))))
     (dotimes (a 2)
-      (setq arity-list (eval (he/fun-body "arityList" '(0))))
-      (he/compile code (car funs)
-                  (pop arity-list) (eval (he/fun-body "arityFormat"
-                                                      (list (cadr funs)))))
+      (setq arity-list (eval (he/fun-body "arityList" nil)))
+      (he/compile
+       (eval
+        (he/fun-body "formatCode"
+                     (list code (car funs)
+                           (car arity-list)
+                           (eval (he/fun-body "arityFormat"
+                                              (list (cadr funs))))))))
       (delete-process he/proc)
-      (setq he/proc (start-process "hask" nil
-                                   (concat haskell-emacs-dir ".HaskellEmacs")))
+      (setq he/proc (start-process "hask" nil heE))
       (set-process-filter he/proc 'he/filter))
-    (set-process-sentinel
-     he/proc (lambda (proc sign)
-               (setq he/response nil)
-               (haskell-emacs-init)
-               (let ((debug-on-error t))
-                 (error "Haskell emacs crashed and was restarted."))))
+    (set-process-sentinel he/proc (lambda (proc sign)
+                                    (setq he/response nil)
+                                    (haskell-emacs-init)
+                                    (let ((debug-on-error t))
+                                      (error "Haskell emacs crashed."))))
     (set-process-query-on-exit-flag he/proc nil)
-    (setq arity-list (car arity-list))
+    (setq arity-list (cadr arity-list))
     (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity-list))))
           (cadr funs))))
 
@@ -174,24 +172,16 @@
                           (he/array-to-list x) x))
           array))
 
-(defun he/compile (code import export arity)
+(defun he/compile (code)
   "Inject into CODE a list of IMPORT and of EXPORT and compile it."
   (with-temp-buffer
-    (let ((heF ".HaskellEmacs.hs")
-          (heB "*HASKELL-BUFFER*"))
-      (insert code)
-      (goto-char (point-min))
-      (when (re-search-forward "---- <<import>> ----" nil t)
-        (replace-match import t t))
-      (when (re-search-forward "---- <<arity>> ----" nil t)
-        (replace-match arity t t))
-      (when (re-search-forward "---- <<export>> ----" nil t)
-        (replace-match export t t))
+    (let ((heB "*HASKELL-BUFFER*"))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
-                   (equal (buffer-string)
+                   (equal code
                           (with-temp-buffer (insert-file-contents heF)
                                             (buffer-string))))
+	(insert code)
         (write-file heF))
       (unless (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
                                    (concat "-with-rtsopts=-N"

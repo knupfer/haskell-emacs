@@ -58,9 +58,16 @@ dispatcher :: M.Map Text (Text -> Text)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat)
   , ("allExports", transform allExports)
-  , ("arityList", transform . (const :: a -> Int -> a) $ toDispatcher arityList)] ++ [
+  , ("arityList", transform . (const :: a -> Int -> a) $ toDispatcher arityList)
+  , ("formatCode", transform  formatCode)] ++ [
   ---- <<export>> ----
   ]
+
+formatCode :: [Text] -> Text
+formatCode [c, imports, exports, arities] = inject "arity" arities
+                                       . inject "export" exports
+                                       . inject "import" imports $ c
+  where inject s = T.replace (T.concat ["---- <<",s,">> ----"])
 
 allExports :: [Text] -> (Text, [Text])
 allExports xs = if null l
