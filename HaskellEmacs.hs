@@ -2,23 +2,22 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 ---- <<import>> ----
-import           Control.Applicative         ((<$>),many)
 import           Control.Concurrent
-import           Control.Monad               (forever, mapM_)
-import           Control.Parallel.Strategies (rdeepseq, using)
+import           Control.Monad                    (forever)
+import           Control.Parallel.Strategies      (rdeepseq, using)
 import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString.Char8  as A
-import qualified Data.ByteString.Lazy.Char8  as B
-import qualified Data.ByteString             as BS
-import qualified Data.Map                    as M
-import           Data.Maybe                  (fromJust)
-import           Data.Monoid                 ((<>))
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
+import qualified Data.Attoparsec.ByteString.Char8 as A
+import qualified Data.ByteString                  as BS
+import qualified Data.ByteString.Lazy.Char8       as B
+import qualified Data.Map                         as M
+import           Data.Maybe                       (fromJust)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text)
+import qualified Data.Text                        as T
 import           Data.Text.Encoding
-import qualified Data.Text.IO                as T
-import           System.IO                   (hFlush, stdout)
-import qualified Text.Show.Text              as T (show)
+import qualified Data.Text.IO                     as T
+import           System.IO                        (hFlush, stdout)
+import qualified Text.Show.Text                   as T (show)
 
 class Arity f where
   arity :: f -> Int
@@ -72,14 +71,15 @@ dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat)
   , ("allExports", transform allExports)
   , ("arityList", transform . (const :: a -> Int -> a) $ toDispatcher arityList)
-  , ("formatCode", transform  formatCode)] ++ [
+  , ("formatCode", transform $ uncurry formatCode)
+  ] ++ [
   ---- <<export>> ----
   ]
 
-formatCode :: [Text] -> Text
-formatCode [c, imports, exports, arities] = inject "arity" arities
+formatCode :: (Text,Text,Text) -> Text -> Text
+formatCode (imports, exports, arities) = inject "arity"  arities
                                        . inject "export" exports
-                                       . inject "import" imports $ c
+                                       . inject "import" imports
   where inject s = T.replace (T.concat ["---- <<",s,">> ----"])
 
 allExports :: [Text] -> (Text, [Text])

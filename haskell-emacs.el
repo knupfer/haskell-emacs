@@ -82,10 +82,12 @@
     (dotimes (a 2)
       (setq arity-list (eval (he/fun-body "arityList" nil)))
       (he/compile
-       (eval (he/fun-body "formatCode" (list code (car funs)
-                                             (car arity-list)
-                                             (eval (he/fun-body "arityFormat"
-                                                                (cdr funs)))))))
+       (eval (he/fun-body "formatCode"
+                          (list (list (car funs)
+                                      (car arity-list)
+                                      (eval (he/fun-body "arityFormat"
+                                                         (cdr funs))))
+                                code))))
       (eval start-proc))
     (set-process-sentinel he/proc (lambda (proc sign)
                                     (setq he/response nil)
