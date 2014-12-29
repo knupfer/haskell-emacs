@@ -60,8 +60,6 @@
     (mkdir haskell-emacs-dir t))
   (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$"))
         (process-connection-type nil)
-        (imports)
-        (exports)
         (arity-list)
         (code (with-temp-buffer
                 (insert-file-contents
@@ -69,16 +67,27 @@
                 (buffer-string))))
     (when he/proc
       (delete-process he/proc))
-    (setq imports (apply 'concat
-                         (mapcar (lambda (f)
-                                   (let ((ex (he/exports-get f)))
-                                     (when ex
-                                       (add-to-list 'exports ex)
-                                       (concat "import qualified "
-                                               (substring f 0 -3) "\n"))))
-                                 funs))
-          arity-list (he/compile code imports (he/arity-format exports) t))
-    (he/compile code imports (pop arity-list) nil)
+    (unless (file-exists-p (concat haskell-emacs-dir ".HaskellEmacs"))
+      (with-temp-buffer
+        (insert code)
+        (write-file (concat haskell-emacs-dir ".HaskellEmacs.hs"))
+	(cd haskell-emacs-dir)
+        (call-process "ghc" nil nil nil "--make" ".HaskellEmacs.hs")))
+    (setq he/proc (start-process "hask" nil
+                                 (concat haskell-emacs-dir ".HaskellEmacs")))
+    (set-process-filter he/proc 'he/filter)
+    (setq funs (mapcar (lambda (f) (with-temp-buffer
+                                     (insert-file-contents
+                                      (concat haskell-emacs-dir f))
+                                     (buffer-string)))
+                       funs)
+          funs (eval (he/fun-body "allExports" (list funs)))
+          arity-list (he/compile code (car funs)
+                                 (eval (he/fun-body "arityFormat"
+                                                    (list (cadr funs))))
+                                 t))
+    (he/compile code (car funs) (pop arity-list) nil)
+    (delete-process he/proc)
     (setq he/proc (start-process "hask" nil
                                  (concat haskell-emacs-dir ".HaskellEmacs")))
     (set-process-sentinel
@@ -90,10 +99,8 @@
     (set-process-query-on-exit-flag he/proc nil)
     (set-process-filter he/proc 'he/filter)
     (setq arity-list (car arity-list))
-    (mapc (lambda (fi)
-            (mapc (lambda (fu) (eval (he/fun-wrapper fu (pop arity-list))))
-                  fi))
-          exports)))
+    (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity-list))))
+          (cadr funs))))
 
 (defun he/filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
@@ -142,50 +149,30 @@
                                           (while (re-search-forward "\n" nil t)
                                             (setq lines (+ lines 1)))
                                           lines)))
-                     "\n" arguments "\n"))))
+                     "\n" arguments "\n")))
+  (list 'he/get he/count))
 
 (defun he/fun-wrapper (fun args)
   "Take FUN with ARGS and return wrappers in elisp."
   (let ((body `(he/fun-body ,fun ,(read (concat "(list " (substring args 1))))))
     `(progn (byte-compile (defun ,(intern fun) ,(read args)
-                            ,body (he/get he/count)))
+                            (eval ,body)))
             (byte-compile (defun ,(intern (concat fun "-async")) ,(read args)
-                            ,body `(he/get ,he/count))))))
+                            ,body)))))
 
 (defun he/get (id)
   "Retrieve result from haskell process with ID."
   (while (not (gethash id he/table))
     (accept-process-output he/proc))
-  (read (gethash id he/table)))
+  (let ((res (gethash id he/table)))
+    (remhash id he/table)
+    (read res)))
 
 (defun he/array-to-list (array)
   "Take a sequence and turn all ARRAY to lists."
   (mapcar (lambda (x) (if (and (not (stringp x)) (or (arrayp x) (listp x)))
                           (he/array-to-list x) x))
           array))
-
-(defun he/arity-format (list-of-exports)
-  "Take a LIST-OF-EXPORTS and format it into an arity check."
-  (let* ((tr '(mapcar (lambda (y) (concat "(\"" y "\"," "arity "y"),")) x))
-         (result (apply 'concat (mapcar (lambda (x) (apply 'concat (eval tr)))
-                                        list-of-exports))))
-    (if (> (length result) 0)
-        (substring result 0 -1)
-      "")))
-
-(defun he/exports-get (file)
-  "Get a list of exports from FILE."
-  (let ((f-base (file-name-base file))
-        (w "[ \t\n\r]"))
-    (with-temp-buffer
-      (insert-file-contents (concat haskell-emacs-dir file))
-      (when (re-search-forward
-             (concat "^module" w "+" f-base
-                     w "*(" w "*\\(\\(?:[^)]\\|" w "\\)+\\)" w "*)")
-             nil t)
-        (mapcar (lambda (fun) (concat f-base "."
-                                      (car (last (split-string fun "\\.")))))
-                (split-string (match-string 1) "[ \n\r,]+"))))))
 
 (defun he/compile (code import export arity)
   "Inject into CODE a list of IMPORT and of EXPORT and compile it."
@@ -212,8 +199,7 @@
       (unless
           (eql 0 (if arity
                      (call-process "ghc" nil heB nil "--make" heF)
-                   (call-process "ghc" nil heB nil
-                                 "-O2" "-threaded" "--make"
+                   (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
                                  (concat "-with-rtsopts=-N"
                                          (number-to-string haskell-emacs-cores))
                                  heF)))
