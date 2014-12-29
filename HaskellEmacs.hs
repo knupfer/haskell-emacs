@@ -30,15 +30,11 @@ instance Arity f => Arity ((->) a f) where
 
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = if not $ null arityList
-          then B.putStrLn . encode $ toDispatcher arityList
-          else do
-            printer <- newEmptyMVar
-            forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
-            forever $
-              do (f,n,line) <- extract <$> T.getLine
-                 result     <- run f n <$> replicateM line T.getLine
-                 forkIO $ (result `using` rdeepseq) `seq` putMVar printer result
+main = do printer <- newEmptyMVar
+          forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
+          forever $ do (f,n,line) <- extract <$> T.getLine
+                       r          <- run f n <$> replicateM line T.getLine
+                       forkIO $ (r `using` rdeepseq) `seq` putMVar printer r
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher xs = ( T.intercalate "," $ map fun xs
@@ -61,7 +57,8 @@ arityList =
 dispatcher :: M.Map Text (Text -> Text)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat)
-  , ("allExports", transform allExports)] ++ [
+  , ("allExports", transform allExports)
+  , ("arityList", transform . (const :: a -> Int -> a) $ toDispatcher arityList)] ++ [
   ---- <<export>> ----
   ]
 

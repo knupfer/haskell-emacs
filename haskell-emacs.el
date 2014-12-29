@@ -81,15 +81,16 @@
                                       (concat haskell-emacs-dir f))
                                      (buffer-string)))
                        funs)
-          funs (eval (he/fun-body "allExports" (list funs)))
-          arity-list (he/compile code (car funs)
-                                 (eval (he/fun-body "arityFormat"
-                                                    (list (cadr funs))))
-                                 t))
-    (he/compile code (car funs) (pop arity-list) nil)
-    (delete-process he/proc)
-    (setq he/proc (start-process "hask" nil
-                                 (concat haskell-emacs-dir ".HaskellEmacs")))
+          funs (eval (he/fun-body "allExports" (list funs))))
+    (dotimes (a 2)
+      (setq arity-list (eval (he/fun-body "arityList" '(0))))
+      (he/compile code (car funs)
+                  (pop arity-list) (eval (he/fun-body "arityFormat"
+                                                      (list (cadr funs)))))
+      (delete-process he/proc)
+      (setq he/proc (start-process "hask" nil
+                                   (concat haskell-emacs-dir ".HaskellEmacs")))
+      (set-process-filter he/proc 'he/filter))
     (set-process-sentinel
      he/proc (lambda (proc sign)
                (setq he/response nil)
@@ -97,7 +98,6 @@
                (let ((debug-on-error t))
                  (error "Haskell emacs crashed and was restarted."))))
     (set-process-query-on-exit-flag he/proc nil)
-    (set-process-filter he/proc 'he/filter)
     (setq arity-list (car arity-list))
     (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity-list))))
           (cadr funs))))
@@ -177,18 +177,15 @@
 (defun he/compile (code import export arity)
   "Inject into CODE a list of IMPORT and of EXPORT and compile it."
   (with-temp-buffer
-    (let ((heF (if arity
-                   ".HaskellEmacsA.hs"
-                 ".HaskellEmacs.hs"))
+    (let ((heF ".HaskellEmacs.hs")
           (heB "*HASKELL-BUFFER*"))
       (insert code)
       (goto-char (point-min))
       (when (re-search-forward "---- <<import>> ----" nil t)
         (replace-match import t t))
-      (when (re-search-forward (if arity
-                                   "---- <<arity>> ----"
-                                 "---- <<export>> ----")
-                               nil t)
+      (when (re-search-forward "---- <<arity>> ----" nil t)
+        (replace-match arity t t))
+      (when (re-search-forward "---- <<export>> ----" nil t)
         (replace-match export t t))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
@@ -196,21 +193,14 @@
                           (with-temp-buffer (insert-file-contents heF)
                                             (buffer-string))))
         (write-file heF))
-      (unless
-          (eql 0 (if arity
-                     (call-process "ghc" nil heB nil "--make" heF)
-                   (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
-                                 (concat "-with-rtsopts=-N"
-                                         (number-to-string haskell-emacs-cores))
-                                 heF)))
+      (unless (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
+                                   (concat "-with-rtsopts=-N"
+                                           (number-to-string haskell-emacs-cores))
+                                   heF))
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
           (error bug)))
-      (kill-buffer heB)
-      (when arity
-        (with-temp-buffer
-          (call-process (concat haskell-emacs-dir ".HaskellEmacsA") nil t)
-          (read (buffer-string)))))))
+      (kill-buffer heB))))
 
 (provide 'haskell-emacs)
 
