@@ -48,21 +48,12 @@ parseInput = A.parse $ do
   c <- lisp                       <* A.string "\n"
   return (run (decodeUtf8 a) (decodeUtf8 b), c)
 
-toDispatcher :: [(Text, Int)] -> (Text, [Text])
-toDispatcher = T.intercalate "," . map fun
-               &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
-  where wrap t ts = T.concat $ "(\"":t:"\",transform ":ts ++ [")"]
-        fun (t,n) = wrap t $ case n of 0 -> ["((const :: a -> Int -> a) ", t, ")"]
-                                       1 -> [t]
-                                       _ -> ["(\\(", T.intercalate "," $ args n
-                                           ,") -> " , T.unwords $ t:args n, ")"]
-        args n = ["x" <> T.show x | x <- [1 .. n ]]
-
-arityList :: [(Text,Int)]
-arityList =
-  [
-  ---- <<arity>> ----
-  ]
+-- | Takes a function and feeds it stdin until all input is given and
+-- prints the output.
+run :: Text -> Text -> Lisp -> Text
+run f resultId xs = T.concat ["(", msgLength, " ", resultId, result]
+  where result    = fromJust (M.lookup f dispatcher) xs
+        msgLength = T.show . T.length . T.drop 1 $ T.dropWhile (/= ')') result
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
@@ -74,6 +65,35 @@ dispatcher = M.fromList $
   , ("formatCode", transform $ uncurry formatCode)
   ] ++ [
   ---- <<export>> ----
+  ]
+
+-- | Transform a curried function to a function which receives and
+-- returns a string in lisp syntax.
+transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Text
+transform f = fromResult . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLisp
+
+-- | Retrieves the contents of the result and annotates whether it was
+-- a success.
+fromResult :: Result Text -> Text
+fromResult (Success s) = ")" <> s
+fromResult (Error s)   = T.pack $ " t)" ++ s
+
+toDispatcher :: [(Text, Int)] -> (Text, [Text])
+toDispatcher = T.intercalate "," . map fun
+               &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
+  where wrap t ts = T.concat $ "(\"":t:"\",transform ":ts ++ [")"]
+        fun (t,n) = wrap t $ case n of 0 -> ["((const :: a -> Int -> a) ", t, ")"]
+                                       1 -> [t]
+                                       _ -> ["(\\(", T.intercalate "," $ args n
+                                           ,") -> " , T.unwords $ t:args n, ")"]
+        args n = ["x" <> T.show x | x <- [1 .. n ]]
+
+-- Helperfunctions for bootstrapping.
+
+arityList :: [(Text,Int)]
+arityList =
+  [
+  ---- <<arity>> ----
   ]
 
 formatCode :: (Text,Text,Text) -> Text -> Text
@@ -99,21 +119,3 @@ exportsGet t
 arityFormat :: [Text] -> Text
 arityFormat = T.intercalate ","
               . map (\x -> T.concat ["(\"", x, "\",arity ", x, ")"])
-
--- | Transform a curried function to a function which receives and
--- returns a string in lisp syntax.
-transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Text
-transform f = failure . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLisp
-
--- | Retrieves the contents of the result and annotates whether it was
--- a success.
-failure :: Result Text -> Text
-failure (Success s) = ")" <> s
-failure (Error s)   = T.pack $ " t)" ++ s
-
--- | Takes a function and feeds it stdin until all input is given and
--- prints the output.
-run :: Text -> Text -> Lisp -> Text
-run f resultId xs = T.concat ["(", msgLength, " ", resultId, result]
-  where result    = fromJust (M.lookup f dispatcher) xs
-        msgLength = T.show . T.length . T.drop 1 $ T.dropWhile (/= ')') result

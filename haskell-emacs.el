@@ -170,7 +170,8 @@
                    (equal code (with-temp-buffer (insert-file-contents heF)
                                                  (buffer-string))))
         (insert code)
-        (write-file heF))
+        (write-file heF)
+        (message "Compiling ..."))
       (if (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
                                (concat "-with-rtsopts=-N"
                                        (number-to-string haskell-emacs-cores))
