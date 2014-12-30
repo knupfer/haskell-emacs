@@ -35,14 +35,13 @@ main = do printer <- newEmptyMVar
             mapM_ (\(r,l) -> forkIO $ r l `seq` putMVar printer $ r l)
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
-fullParse c = map (\(_,(x,y,z)) -> (run x y, z)) . tail
-                 $ iterate nextParse (c,("","",nil))
+fullParse c = map snd . tail $ iterate nextParse (c,(const "",nil))
 
-nextParse :: (B.ByteString, t) -> (B.ByteString, (Text, Text, Lisp))
+nextParse :: (B.ByteString, t) -> (B.ByteString, (Lisp -> Text, Lisp))
 nextParse (c, _) = case parseInput c of A.Done a b -> (a,b)
-                                        A.Fail a _ _ -> (a, ("","",nil))
+                                        A.Fail a _ _ -> (a, (const "",nil))
 
-parseInput :: B.ByteString -> A.Result (Text, Text, Lisp)
+parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
 parseInput = A.parse $ do
   a <- A.takeTill $ A.inClass " "
   _ <- A.string " "
@@ -50,7 +49,7 @@ parseInput = A.parse $ do
   _ <- A.string " "
   c <- lisp
   _ <- A.string "\n"
-  return (decodeUtf8 a, decodeUtf8 b, c)
+  return (run (decodeUtf8 a) (decodeUtf8 b), c)
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher xs = ( T.intercalate "," $ map fun xs
