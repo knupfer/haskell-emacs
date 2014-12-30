@@ -6,8 +6,7 @@ import           Control.Concurrent
 import           Control.Monad                    (forever)
 import           Control.Parallel.Strategies      (rdeepseq, using)
 import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString.Char8 as A
-import qualified Data.ByteString                  as BS
+import qualified Data.Attoparsec.ByteString.Lazy as A
 import qualified Data.ByteString.Lazy.Char8       as B
 import qualified Data.Map                         as M
 import           Data.Maybe                       (fromJust)
@@ -32,21 +31,27 @@ instance Arity f => Arity ((->) a f) where
 main :: IO ()
 main = do printer <- newEmptyMVar
           forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
-          forever $ do r <- loop (extract "")
-                       forkIO $ (r `using` rdeepseq) `seq` putMVar printer r
-  where loop x =
-          case x of A.Done _ l  -> return l
-                    A.Partial _ -> BS.getLine >>= loop . A.feed x . flip (<>) "\n"
-                    A.Fail{}    -> error "beep"
+          contents <- B.getContents
+          mapM_ (\(a,b,c) -> forkIO ((run a b c `using` rdeepseq) `seq`
+                                     putMVar printer (run a b c)))
+                (myFilter contents)
 
-extract :: BS.ByteString -> A.Result Text
+myFilter :: B.ByteString -> [(Text,Text,Lisp)]
+myFilter c = map snd . tail $ iterate getResults (c,("","",nil))
+
+getResults :: (B.ByteString, t) -> (B.ByteString, (Text, Text, Lisp))
+getResults (c, _) = case extract c of A.Done a b -> (a,b)
+                                      A.Fail a _ _ -> (a, ("","",nil))
+
+extract :: B.ByteString -> A.Result (Text, Text, Lisp)
 extract = A.parse $ do
-  a <- A.takeTill (==' ')
-  _ <- A.space
-  b <- A.takeTill (==' ')
-  _ <- A.space
+  a <- A.takeTill $ A.inClass " "
+  _ <- A.string " "
+  b <- A.takeTill $ A.inClass " "
+  _ <- A.string " "
   c <- lisp
-  return (run (decodeUtf8 a) (decodeUtf8 b) c)
+  _ <- A.string "\n"
+  return (decodeUtf8 a, decodeUtf8 b, c)
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher xs = ( T.intercalate "," $ map fun xs
