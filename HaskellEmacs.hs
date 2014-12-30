@@ -2,7 +2,8 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 ---- <<import>> ----
-import           Control.Applicative             ((<$>),(<*))
+import           Control.Applicative             ((<$>), (<*))
+import           Control.Arrow
 import           Control.Concurrent
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Lazy as A
@@ -48,13 +49,13 @@ parseInput = A.parse $ do
   return (run (decodeUtf8 a) (decodeUtf8 b), c)
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
-toDispatcher xs = ( T.intercalate "," $ map fun xs
-                  , map (\(_,x) -> T.unwords $ "(": args x ++ [")"]) xs)
-  where wrap t ts = T.concat $ "(\"":t: "\",transform ": (ts :: [Text]) ++ [")"]
-        fun (t,n) | n == 0 = wrap t [ "((const :: a -> Int -> a) ", t, ")" ]
-                  | n == 1 = wrap t [t]
-                  | otherwise = wrap t [ "(\\(", T.intercalate "," $ args n
-                                       , ") -> " , T.unwords $ t:args n, ")"]
+toDispatcher = T.intercalate "," . map fun
+               &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
+  where wrap t ts = T.concat $ "(\"":t:"\",transform ":ts ++ [")"]
+        fun (t,n) = wrap t $ case n of 0 -> ["((const :: a -> Int -> a) ", t, ")"]
+                                       1 -> [t]
+                                       _ -> ["(\\(", T.intercalate "," $ args n
+                                           ,") -> " , T.unwords $ t:args n, ")"]
         args n = ["x" <> T.show x | x <- [1 .. n ]]
 
 arityList :: [(Text,Int)]
