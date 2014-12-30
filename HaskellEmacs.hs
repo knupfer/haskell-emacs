@@ -87,8 +87,8 @@ formatCode (imports, exports, arities) = inject "arity"  arities
 
 allExports :: [Text] -> (Text, [Text])
 allExports xs = if null l
-                    then ("",[""])
-                    else (T.concat $ map head l, concatMap tail l)
+                   then ("",[""])
+                   else (T.concat $ map head l, concatMap tail l)
   where l = filter (not . null) $ map exportsGet xs
 
 exportsGet :: Text -> [Text]
@@ -100,13 +100,13 @@ exportsGet t
         imports x = "import qualified " <>x<> "\n"
 
 arityFormat :: [Text] -> Text
-arityFormat = T.intercalate "," . map (\x -> T.concat ["(\"", x, "\",arity ", x, ")"])
+arityFormat = T.intercalate ","
+              . map (\x -> T.concat ["(\"", x, "\",arity ", x, ")"])
 
 -- | Transform a curried function to a function which receives and
 -- returns a string in lisp syntax.
 transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Text
-transform f = toText
-  where toText = failure . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLisp
+transform f = failure . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLisp
 
 -- | Retrieves the contents of the result and annotates whether it was
 -- a success.
