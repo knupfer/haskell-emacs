@@ -110,8 +110,8 @@ transform f = failure . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLisp
 -- | Retrieves the contents of the result and annotates whether it was
 -- a success.
 failure :: Result Text -> Text
-failure (Success s) = " yes)" <> s
-failure (Error s)   = T.pack $ " nil)" ++ s
+failure (Success s) = ")" <> s
+failure (Error s)   = T.pack $ " t)" ++ s
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.

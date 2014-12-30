@@ -47,6 +47,8 @@
   "Number of cores used for haskell Emacs."
   :group 'haskell-emacs
   :type 'integer)
+(setq DEB-time 0)
+(setq DEB-timeF 0)
 
 (defvar he/response nil)
 (defvar he/count 0)
@@ -101,21 +103,24 @@
 
 (defun he/filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
-  (setq he/response (concat he/response output))
-  (let* ((header (read he/response))
-         (headLen (+ (car header) (length (format "%s" header)))))
-    (while (<= headLen (length he/response))
-      (let ((content (substring he/response (- headLen (car header)) headLen)))
-        (setq he/response (substring he/response headLen))
-        (unless (car (last header)) (error content))
-        (puthash (cadr header) content he/table)
-        (when (> (length he/response) 7)
-          (setq header (read he/response)
-                headLen (+ (car header) (length (format "%s" header)))))))))
+  (let ((a (current-time)))
+    (setq he/response (concat he/response output))
+    (let* ((header (read he/response))
+           (headLen (+ (car header) (length (format "%s" header)))))
+      (while (<= headLen (length he/response))
+        (let ((content (substring he/response (- headLen (car header)) headLen)))
+          (setq he/response (substring he/response headLen))
+          (when (eq 3 (length header)) (error content))
+          (puthash (cadr header) content he/table)
+          (when (> (length he/response) 7)
+            (setq header (read he/response)
+                  headLen (+ (car header) (length (format "%s" header))))))))
+    (setq DEB-timeF (+ DEB-timeF (float-time (time-subtract (current-time) a))))))
 
 (defun he/fun-body (fun args)
   "Generate function body for FUN with ARGS."
-  (let ((arguments))
+  (let ((arguments)
+        (a (current-time)))
     (setq he/count (+ 1 he/count))
     (if (not args)
         (setq arguments "0")
@@ -135,16 +140,16 @@
           (setq arguments (car arguments))
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
+    (setq DEB-time (+ DEB-time (float-time (time-subtract (current-time) a))))
     (process-send-string
-     he/proc (concat fun " " (number-to-string he/count) " "
-                     arguments "\n")))
+     he/proc (concat fun " " (number-to-string he/count) " " arguments "\n")))
   (list 'he/get he/count))
 
 (defun he/fun-wrapper (fun args)
   "Take FUN with ARGS and return wrappers in elisp."
   (let ((body `(he/fun-body ,fun ,(read (concat "(list " (substring args 1))))))
     `(progn (byte-compile (defun ,(intern fun) ,(read args)
-                            (eval ,body)))
+                            (let ((he/count -1)) (eval ,body))))
             (byte-compile (defun ,(intern (concat fun "-async")) ,(read args)
                             ,body)))))
 
