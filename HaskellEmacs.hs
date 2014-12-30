@@ -51,7 +51,7 @@ parseInput = A.parse $ do
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
 run :: Text -> Text -> Lisp -> Text
-run f resultId xs = T.concat ["(", msgLength, " ", resultId, result]
+run f resultId xs = "(" <> msgLength <> " " <> resultId <> result
   where result    = fromJust (M.lookup f dispatcher) xs
         msgLength = T.show . T.length . T.drop 1 $ T.dropWhile (/= ')') result
 
@@ -76,16 +76,16 @@ transform f = fromResult . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLis
 -- a success.
 fromResult :: Result Text -> Text
 fromResult (Success s) = ")" <> s
-fromResult (Error s)   = T.pack $ " t)" ++ s
+fromResult (Error s)   = " t)" <> T.pack s
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher = T.intercalate "," . map fun
                &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
-  where wrap t ts = T.concat $ "(\"":t:"\",transform ":ts ++ [")"]
-        fun (t,n) = wrap t $ case n of 0 -> ["((const :: a -> Int -> a) ", t, ")"]
-                                       1 -> [t]
-                                       _ -> ["(\\(", T.intercalate "," $ args n
-                                           ,") -> " , T.unwords $ t:args n, ")"]
+  where wrap t ts = "(\"" <> t <> "\",transform " <> ts <> ")"
+        fun (t,n) = wrap t $ case n of 0 -> "((const :: a -> Int -> a) " <> t <> ")"
+                                       1 -> t
+                                       _ -> "(\\(" <> T.intercalate "," (args n)
+                                           <> ") -> " <> T.unwords (t:args n) <> ")"
         args n = ["x" <> T.show x | x <- [1 .. n ]]
 
 -- Helperfunctions for bootstrapping.
@@ -100,12 +100,10 @@ formatCode :: (Text,Text,Text) -> Text -> Text
 formatCode (imports, exports, arities) = inject "arity"  arities
                                        . inject "export" exports
                                        . inject "import" imports
-  where inject s = T.replace (T.concat ["---- <<",s,">> ----"])
+  where inject s = T.replace ("---- <<" <> s <> ">> ----")
 
 allExports :: [Text] -> (Text, [Text])
-allExports xs = if null l
-                   then ("",[""])
-                   else (T.concat $ map head l, concatMap tail l)
+allExports xs = T.concat . map head &&& concatMap tail $ l
   where l = filter (not . null) $ map exportsGet xs
 
 exportsGet :: Text -> [Text]
@@ -114,8 +112,8 @@ exportsGet t
   | otherwise       = (\(x:xs) -> imports x : map ((x <> ".") <>) xs) list
   where list = filter (not . T.null) . takeWhile (/= "where")
                . drop 1 . dropWhile (/= "module") $ T.split (`elem` "\n ,()\t") t
-        imports x = "import qualified " <>x<> "\n"
+        imports x = "import qualified " <> x <> "\n"
 
 arityFormat :: [Text] -> Text
 arityFormat = T.intercalate ","
-              . map (\x -> T.concat ["(\"", x, "\",arity ", x, ")"])
+              . map (\x -> "(\"" <> x <> "\",arity " <> x <> ")")
