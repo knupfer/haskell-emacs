@@ -28,10 +28,10 @@ instance Arity f => Arity ((->) a f) where
 
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = do printer <- newMVar ()
-          fullParse <$> B.getContents >>=
-            mapM_ (\(r,l) -> forkIO $ r l `seq` modifyMVar_ printer
-                  . const $ T.putStr (r l) >> hFlush stdout)
+main = do lock <- newMVar ()
+          mapM_ (\(fun,l) -> forkIO $ fun l `seq` modifyMVar_ lock
+                        . const $ T.putStr (fun l) >> hFlush stdout)
+                =<< fullParse <$> B.getContents
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
 fullParse c = map snd . tail $ iterate nextParse (c,(const "",nil))
@@ -93,7 +93,7 @@ allExports xs = if null l
 exportsGet :: Text -> [Text]
 exportsGet t
   | length list < 2 = []
-  | otherwise = (\(x:xs) -> imports x :map ((x <> ".") <>) xs) list
+  | otherwise       = (\(x:xs) -> imports x : map ((x <> ".") <>) xs) list
   where list = filter (not . T.null) . takeWhile (/= "where")
                . drop 1 . dropWhile (/= "module") $ T.split (`elem` "\n ,()\t") t
         imports x = "import qualified " <>x<> "\n"
