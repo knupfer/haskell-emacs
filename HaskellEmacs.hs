@@ -2,7 +2,7 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 ---- <<import>> ----
-import           Control.Applicative             ((<$>))
+import           Control.Applicative             ((<$>),(<*))
 import           Control.Concurrent
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Lazy as A
@@ -42,12 +42,9 @@ nextParse (c, _) = case parseInput c of A.Done a b -> (a,b)
 
 parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
 parseInput = A.parse $ do
-  a <- A.takeTill $ A.inClass " "
-  _ <- A.string " "
-  b <- A.takeTill $ A.inClass " "
-  _ <- A.string " "
-  c <- lisp
-  _ <- A.string "\n"
+  a <- A.takeTill (A.inClass " ") <* A.string " "
+  b <- A.takeTill (A.inClass " ") <* A.string " "
+  c <- lisp                       <* A.string "\n"
   return (run (decodeUtf8 a) (decodeUtf8 b), c)
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
