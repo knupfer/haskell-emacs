@@ -4,7 +4,6 @@
 ---- <<import>> ----
 import           Control.Applicative             ((<$>))
 import           Control.Concurrent
-import           Control.Monad                   (forever)
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Lazy as A
 import qualified Data.ByteString.Lazy.Char8      as B
@@ -29,10 +28,10 @@ instance Arity f => Arity ((->) a f) where
 
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = do printer <- newEmptyMVar
-          forkIO . forever $ takeMVar printer >>= T.putStrLn >> hFlush stdout
+main = do printer <- newMVar ()
           fullParse <$> B.getContents >>=
-            mapM_ (\(r,l) -> forkIO $ r l `seq` putMVar printer $ r l)
+            mapM_ (\(r,l) -> forkIO $ r l `seq` modifyMVar_ printer
+                  . const $ T.putStr (r l) >> hFlush stdout)
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
 fullParse c = map snd . tail $ iterate nextParse (c,(const "",nil))
@@ -119,4 +118,4 @@ failure (Error s)   = T.pack $ " nil)" ++ s
 run :: Text -> Text -> Lisp -> Text
 run f resultId xs = T.concat ["(", msgLength, " ", resultId, result]
   where result    = fromJust (M.lookup f dispatcher) xs
-        msgLength = T.show . T.length $ T.dropWhile (/= ')') result
+        msgLength = T.show . T.length . T.drop 1 $ T.dropWhile (/= ')') result
