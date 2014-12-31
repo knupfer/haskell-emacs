@@ -106,4 +106,6 @@ Polymorphic types are not well supported and higher functions aren't
 supported at all, you can't pass functions as arguments to haskell
 functions in emacs.
 
-If a haskell function causes an error, you have to rerun =haskell-emacs-init=.
+If a haskell function crashes haskell-emacs a error will be thrown and
+the server process will be restarted immediately.  In this process,
+every async call will be obviously lost.
