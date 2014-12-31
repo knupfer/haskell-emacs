@@ -4,6 +4,7 @@
 ---- <<import>> ----
 import           Control.Applicative             ((<$>), (<*))
 import           Control.Arrow
+import Control.Monad (forever)
 import           Control.Concurrent
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Lazy as A
@@ -29,10 +30,12 @@ instance Arity f => Arity ((->) a f) where
 
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = do lock <- newMVar ()
-          mapM_ (\(fun,l) -> forkIO $ fun l `seq` modifyMVar_ lock
-                        . const $ T.putStr (fun l) >> hFlush stdout)
+main = do printer <- newEmptyMVar
+          forkIO . forever $ takeMVar printer >>= T.putStr >> hFlush stdout
+          mapM_ (\(fun,l) -> forkIO $ putMVar printer $! fun l)
                 =<< fullParse <$> B.getContents
+--          mapM_ (forkIO . (putMVar printer $!)
+--                . uncurry id) =<< fullParse <$> B.getContents
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
 fullParse c = map snd . tail $ iterate nextParse (c,(const "",nil))
