@@ -48,6 +48,7 @@
   :group 'haskell-emacs
   :type 'integer)
 
+(defvar he/load-file-name load-file-name)
 (defvar he/response nil)
 (defvar he/count 0)
 (defvar he/table (make-hash-table))
@@ -66,7 +67,7 @@
         (heE (concat haskell-emacs-dir ".HaskellEmacs"))
         (code (with-temp-buffer
                 (insert-file-contents
-                 (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
+                 (concat (file-name-directory he/load-file-name) "HaskellEmacs.hs"))
                 (buffer-string)))
         (start-proc '(progn (when he/proc (delete-process he/proc))
                             (setq he/proc (start-process "hask" nil heE))
