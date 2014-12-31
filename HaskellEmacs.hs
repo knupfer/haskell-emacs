@@ -32,6 +32,7 @@ instance Arity f => Arity ((->) a f) where
 main :: IO ()
 main = do printer <- newEmptyMVar
           forkIO . forever $ takeMVar printer >>= T.putStr >> hFlush stdout
+          -- the lambda is necessary for a dependency on calculated tuples
           mapM_ (\(fun,l) -> forkIO $ putMVar printer $! fun l)
                 =<< fullParse <$> B.getContents
 
