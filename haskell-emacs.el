@@ -234,7 +234,7 @@ supported, and only about ten different types."
           array))
 
 (defun haskell-emacs--compile (code)
-  "Inject into CODE a list of IMPORT and of EXPORT and compile it."
+  "Use CODE to compile a new haskell Emacs programm."
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
           (heF ".HaskellEmacs.hs"))
