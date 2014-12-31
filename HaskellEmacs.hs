@@ -4,8 +4,8 @@
 ---- <<import>> ----
 import           Control.Applicative             ((<$>), (<*))
 import           Control.Arrow
-import Control.Monad (forever)
 import           Control.Concurrent
+import           Control.Monad                   (forever)
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Lazy as A
 import qualified Data.ByteString.Lazy.Char8      as B
@@ -34,8 +34,6 @@ main = do printer <- newEmptyMVar
           forkIO . forever $ takeMVar printer >>= T.putStr >> hFlush stdout
           mapM_ (\(fun,l) -> forkIO $ putMVar printer $! fun l)
                 =<< fullParse <$> B.getContents
---          mapM_ (forkIO . (putMVar printer $!)
---                . uncurry id) =<< fullParse <$> B.getContents
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
 fullParse c = map snd . tail $ iterate nextParse (c,(const "",nil))
