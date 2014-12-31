@@ -82,7 +82,7 @@ transpose :: [[Int]] -> [[Int]]
 transpose = L.transpose
 
 dyadic :: [Int] -> [Int] -> [[Int]]
-dyadic xs ys = map (\x -> map (x*) ys) xs
+dyadic xs ys = map (\\x -> map (x*) ys) xs
 ----
 
 Now call `haskell-emacs-init' to provide the elisp wrappers.
