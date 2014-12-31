@@ -1,4 +1,4 @@
-;;; emacs-haskell.el --- write emacs extensions in haskell
+;;; haskell-emacs.el --- write emacs extensions in haskell
 
 ;; Copyright (C) 2014 Florian Knupfer
 
@@ -17,13 +17,18 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
+;; Version: 1.0
 ;; email: (rot13 "sxahcsre@tznvy.pbz")
+;; Keywords: haskell, emacs, ffi
+;; URL: https://github.com/knupfer/haskell-emacs
 
 ;;; Commentary:
 
 ;; Put this file into your load path and put (require 'haskell-emacs)
 ;; and (haskell-emacs-init) into your .emacs.  Afterwards just
-;; populate your `haskell-emacs-dir' with code.
+;; populate your `haskell-emacs-dir' with haskell modules, which
+;; export functions.  These functions will automatically wrapped into
+;; an elisp function with the name Module.function.
 
 ;;; Example:
 
@@ -32,11 +37,6 @@
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
   :group 'haskell)
-
-(eval `(defcustom haskell-emacs-load-dir ,(file-name-directory load-file-name)
-         "Directory with source code of HaskellEmacs.hs."
-         :group 'haskell-emacs
-         :type 'string))
 
 (defcustom haskell-emacs-dir "~/.emacs.d/haskell-fun/"
   "Directory with haskell modules."
@@ -53,6 +53,7 @@
 (defvar he/table (make-hash-table))
 (defvar he/proc nil)
 
+;;;###autoload
 (defun haskell-emacs-init ()
   "Initialize haskell FFI or reload it to reflect changed functions."
   (interactive)
@@ -65,7 +66,7 @@
         (heE (concat haskell-emacs-dir ".HaskellEmacs"))
         (code (with-temp-buffer
                 (insert-file-contents
-                 (concat haskell-emacs-load-dir "HaskellEmacs.hs"))
+                 (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
                 (buffer-string)))
         (start-proc '(progn (when he/proc (delete-process he/proc))
                             (setq he/proc (start-process "hask" nil heE))
@@ -93,7 +94,7 @@
                                     (setq he/response nil)
                                     (haskell-emacs-init)
                                     (let ((debug-on-error t))
-                                      (error "Haskell emacs crashed."))))
+                                      (error "Haskell-emacs crashed"))))
     (set-process-query-on-exit-flag he/proc nil)
     (let ((arity (cadr arity-list)))
       (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity))))
@@ -164,7 +165,8 @@
 (defun he/compile (code)
   "Inject into CODE a list of IMPORT and of EXPORT and compile it."
   (with-temp-buffer
-    (let ((heB "*HASKELL-BUFFER*"))
+    (let ((heB "*HASKELL-BUFFER*")
+          (heF ".HaskellEmacs.hs"))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
