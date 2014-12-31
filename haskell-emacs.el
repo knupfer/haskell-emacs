@@ -177,7 +177,7 @@ supported, and only about ten different types."
                                                  headLen))
         (when (eq 3 (length header)) (error content))
         (puthash (cadr header) content haskell-emacs--table)
-        (when (> (length haskell-emacs--response) 5)
+        (when (string-match ")" haskell-emacs--response)
           (setq header (read haskell-emacs--response)
                 headLen (+ (car header) (length (format "%s" header)))))))))
 
