@@ -51,7 +51,7 @@
   :group 'haskell-emacs
   :type 'integer)
 
-(defvar he/load-file-name load-file-name)
+(defvar he/load-dir (file-name-directory load-file-name))
 (defvar he/response nil)
 (defvar he/count 0)
 (defvar he/table (make-hash-table))
@@ -125,10 +125,11 @@ supported, and only about ten different types."
         (heF ".HaskellEmacs.hs")
         (heE (concat haskell-emacs-dir ".HaskellEmacs"))
         (code (with-temp-buffer
-                (insert-file-contents
-                 (concat (file-name-directory he/load-file-name) "HaskellEmacs.hs"))
+                (insert-file-contents (concat he/load-dir "HaskellEmacs.hs"))
                 (buffer-string)))
-        (start-proc '(progn (when he/proc (delete-process he/proc))
+        (start-proc '(progn (when he/proc
+                              (set-process-sentinel he/proc nil)
+                              (delete-process he/proc))
                             (setq he/proc (start-process "hask" nil heE))
                             (set-process-filter he/proc 'he/filter))))
     (unless (file-exists-p heE)
@@ -158,7 +159,8 @@ supported, and only about ten different types."
     (set-process-query-on-exit-flag he/proc nil)
     (let ((arity (cadr arity-list)))
       (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity))))
-            (cadr funs)))))
+            (cadr funs))))
+  (message "Finished compiling."))
 
 (defun he/filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
