@@ -77,15 +77,16 @@ haskell function.  Arrays will be translated (recursively) to Lists,
 and Lists can represent Lists or Tuples.
 
 * Performance
-There is a small overhead calling haskell functions, so for very
+There is a (very) small overhead calling haskell functions, so for very
 trivial situations, elisp functions will be faster.  On my laptop
 (i5-4210, 2.7Ghz) it costs the following:
-- 0.1 ms per function call
-- 0.001 ms per received char
+- 0.09 ms per function call
+- 0.0005 ms per received char
 - 0.0004 ms per sended char
 
 Unless you use haskell functions on megabytes of text or in very tight
-loops the overhead is irrelevant.
+loops (which wouldn't be wise, transfer the whole task to haskell) the
+overhead is irrelevant.
 
 * Dependencies
 You'll need:
