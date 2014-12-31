@@ -20,17 +20,20 @@
 ;; Version: 1.0
 ;; email: (rot13 "sxahcsre@tznvy.pbz")
 ;; Keywords: haskell, emacs, ffi
-;; Fetch URL: https://github.com/knupfer/haskell-emacs
+;; URL: https://github.com/knupfer/haskell-emacs
 
 ;;; Commentary:
 
-;; Put this file into your load path and put (require 'haskell-emacs)
-;; and (haskell-emacs-init) into your .emacs.  Afterwards just
+;; haskell-emacs is a library which allows extending emacs in haskell.
+;; It provides an FFI (foreign function interface) for haskell functions.
+
+;; Run `haskell-emacs-init' or put it into your .emacs.  Afterwards just
 ;; populate your `haskell-emacs-dir' with haskell modules, which
-;; export functions.  These functions will automatically wrapped into
+;; export functions.  These functions will be wrapped automatically into
 ;; an elisp function with the name Module.function.
 
-;;; Example:
+;; See documentation for `haskell-emacs-init' for a detailed example
+;; of usage.
 
 ;;; Code:
 
@@ -56,7 +59,63 @@
 
 ;;;###autoload
 (defun haskell-emacs-init ()
-  "Initialize haskell FFI or reload it to reflect changed functions."
+  "Initialize haskell FFI or reload it to reflect changed functions.
+
+It will try to wrap all exported functions within
+`haskell-emacs-dir' into an synchronous and an asynchronous elisp
+function.
+
+Dependencies:
+ - GHC
+ - attoparsec
+ - atto-lisp
+ - text-show
+
+Consider that you've got the following toy program:
+
+---- ~/.emacs.d/haskell-fun/Matrix.hs
+module Matrix (transpose, dyadic) where
+
+import qualified Data.List as L
+
+transpose :: [[Int]] -> [[Int]]
+transpose = L.transpose
+
+dyadic :: [Int] -> [Int] -> [[Int]]
+dyadic xs ys = map (\x -> map (x*) ys) xs
+----
+
+Now call `haskell-emacs-init' to provide the elisp wrappers.
+
+  (Matrix.transpose '((1 2) (3 4) (5 6)))
+    => ((1 3 5) (2 4 6))
+
+  (Matrix.dyadic '(1 2 3) '(4 5 6))
+    => ((4 5 6) (8 10 12) (12 15 18))
+
+If you provide bad input, a description of the type error will be
+shown to you.
+
+If you call the async pendant of your functions, you'll get a
+future which will block on evaluation if the result is not already present.
+
+  (Matrix.transpose-async '((1 2) (3 4) (5 6)))
+    => (he/get 7)
+
+  (eval (he/get 7))
+    => ((1 3 5) (2 4 6))
+
+Or perhaps more convenient:
+
+  (let ((tr (Matrix.transpose-async '((1 2) (3 4) (5 6)))))
+
+       ;; other elisp stuff, or more asyncs
+
+       (eval tr))
+
+Haskell-emacs can handle functions of arbitrary arity (including
+0), but you should note, that only monomorphic functions are
+supported, and only about ten different types."
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (mkdir haskell-emacs-dir t))
