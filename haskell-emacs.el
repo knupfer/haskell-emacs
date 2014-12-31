@@ -20,7 +20,7 @@
 ;; Version: 1.0
 ;; email: (rot13 "sxahcsre@tznvy.pbz")
 ;; Keywords: haskell, emacs, ffi
-;; URL: https://github.com/knupfer/haskell-emacs
+;; Fetch URL: https://github.com/knupfer/haskell-emacs
 
 ;;; Commentary:
 
