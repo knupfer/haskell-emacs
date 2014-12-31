@@ -17,8 +17,8 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
-;; Version: 1.0
-;; email: (rot13 "sxahcsre@tznvy.pbz")
+;; Version: 1.1
+;; email: fknupfer@gmail.com
 ;; Keywords: haskell, emacs, ffi
 ;; URL: https://github.com/knupfer/haskell-emacs
 
@@ -51,11 +51,11 @@
   :group 'haskell-emacs
   :type 'integer)
 
-(defvar he/load-dir (file-name-directory load-file-name))
-(defvar he/response nil)
-(defvar he/count 0)
-(defvar he/table (make-hash-table))
-(defvar he/proc nil)
+(defvar haskell-emacs--load-dir (file-name-directory load-file-name))
+(defvar haskell-emacs--response nil)
+(defvar haskell-emacs--count 0)
+(defvar haskell-emacs--table (make-hash-table))
+(defvar haskell-emacs--proc nil)
 
 ;;;###autoload
 (defun haskell-emacs-init ()
@@ -100,9 +100,9 @@ If you call the async pendant of your functions, you'll get a
 future which will block on evaluation if the result is not already present.
 
   (Matrix.transpose-async '((1 2) (3 4) (5 6)))
-    => (he/get 7)
+    => (haskell-emacs--get 7)
 
-  (eval (he/get 7))
+  (eval (haskell-emacs--get 7))
     => ((1 3 5) (2 4 6))
 
 Or perhaps more convenient:
@@ -125,61 +125,66 @@ supported, and only about ten different types."
         (heF ".HaskellEmacs.hs")
         (heE (concat haskell-emacs-dir ".HaskellEmacs"))
         (code (with-temp-buffer
-                (insert-file-contents (concat he/load-dir "HaskellEmacs.hs"))
+                (insert-file-contents
+                 (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
                 (buffer-string)))
-        (start-proc '(progn (when he/proc
-                              (set-process-sentinel he/proc nil)
-                              (delete-process he/proc))
-                            (setq he/proc (start-process "hask" nil heE))
-                            (set-process-filter he/proc 'he/filter))))
+        (start-proc '(progn (when haskell-emacs--proc
+                              (set-process-sentinel haskell-emacs--proc nil)
+                              (delete-process haskell-emacs--proc))
+                            (setq haskell-emacs--proc
+                                  (start-process "hask" nil heE))
+                            (set-process-filter haskell-emacs--proc
+                                                'haskell-emacs--filter))))
     (unless (file-exists-p heE)
-      (he/compile code))
+      (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
                                      (insert-file-contents
                                       (concat haskell-emacs-dir f))
                                      (buffer-string)))
                        funs)
-          funs (eval (he/fun-body "allExports" (list funs))))
+          funs (eval (haskell-emacs--fun-body "allExports" (list funs))))
     (dotimes (a 2)
-      (setq arity-list (eval (he/fun-body "arityList" nil)))
-      (he/compile
-       (eval (he/fun-body "formatCode"
+      (setq arity-list (eval (haskell-emacs--fun-body "arityList" nil)))
+      (haskell-emacs--compile
+       (eval (haskell-emacs--fun-body "formatCode"
                           (list (list (car funs)
                                       (car arity-list)
-                                      (eval (he/fun-body "arityFormat"
-                                                         (cdr funs))))
+                                      (eval (haskell-emacs--fun-body
+                                             "arityFormat" (cdr funs))))
                                 code))))
       (eval start-proc))
-    (set-process-sentinel he/proc (lambda (proc sign)
-                                    (setq he/response nil)
+    (set-process-sentinel haskell-emacs--proc (lambda (proc sign)
+                                    (setq haskell-emacs--response nil)
                                     (haskell-emacs-init)
                                     (let ((debug-on-error t))
                                       (error "Haskell-emacs crashed"))))
-    (set-process-query-on-exit-flag he/proc nil)
+    (set-process-query-on-exit-flag haskell-emacs--proc nil)
     (let ((arity (cadr arity-list)))
-      (mapc (lambda (func) (eval (he/fun-wrapper func (pop arity))))
+      (mapc (lambda (func) (eval (haskell-emacs--fun-wrapper func (pop arity))))
             (cadr funs))))
   (message "Finished compiling."))
 
-(defun he/filter (process output)
+(defun haskell-emacs--filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
-  (setq he/response (concat he/response output))
-  (let* ((header (read he/response))
+  (setq haskell-emacs--response (concat haskell-emacs--response output))
+  (let* ((header (read haskell-emacs--response))
          (headLen (+ (car header) (length (format "%s" header)))))
-    (while (<= headLen (length he/response))
-      (let ((content (substring he/response (- headLen (car header)) headLen)))
-        (setq he/response (substring he/response headLen))
+    (while (<= headLen (length haskell-emacs--response))
+      (let ((content (substring haskell-emacs--response
+                                (- headLen (car header)) headLen)))
+        (setq haskell-emacs--response (substring haskell-emacs--response
+                                                 headLen))
         (when (eq 3 (length header)) (error content))
-        (puthash (cadr header) content he/table)
-        (when (> (length he/response) 7)
-          (setq header (read he/response)
+        (puthash (cadr header) content haskell-emacs--table)
+        (when (> (length haskell-emacs--response) 7)
+          (setq header (read haskell-emacs--response)
                 headLen (+ (car header) (length (format "%s" header)))))))))
 
-(defun he/fun-body (fun args)
+(defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
   (let ((arguments))
-    (setq he/count (+ 1 he/count))
+    (setq haskell-emacs--count (+ 1 haskell-emacs--count))
     (if (not args)
         (setq arguments "0")
       (setq arguments
@@ -188,10 +193,12 @@ supported, and only about ten different types."
                (if (stringp ARG)
                    (format "%S" (substring-no-properties ARG))
                  (if (or (listp ARG) (arrayp ARG))
-                     (concat "(" (apply 'concat
-                                        (mapcar (lambda (x)
-                                                  (concat (format "%S" x) "\n"))
-                                                (he/array-to-list ARG))) ")")
+                     (concat "("
+                             (apply 'concat
+                                    (mapcar
+                                     (lambda (x)
+                                       (concat (format "%S" x) "\n"))
+                                     (haskell-emacs--array-to-list ARG))) ")")
                    (format "%S" ARG))))
              args))
       (if (eql 1 (length arguments))
@@ -199,32 +206,34 @@ supported, and only about ten different types."
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
-     he/proc (concat fun " " (number-to-string he/count) " " arguments "\n")))
-  (list 'he/get he/count))
+     haskell-emacs--proc (concat fun " " (number-to-string haskell-emacs--count)
+                                 " " arguments "\n")))
+  (list 'haskell-emacs--get haskell-emacs--count))
 
-(defun he/fun-wrapper (fun args)
+(defun haskell-emacs--fun-wrapper (fun args)
   "Take FUN with ARGS and return wrappers in elisp."
-  (let ((body `(he/fun-body ,fun ,(read (concat "(list " (substring args 1))))))
+  (let ((body `(haskell-emacs--fun-body
+                ,fun ,(read (concat "(list " (substring args 1))))))
     `(progn (byte-compile (defun ,(intern fun) ,(read args)
-                            (let ((he/count -1)) (eval ,body))))
+                            (let ((haskell-emacs--count -1)) (eval ,body))))
             (byte-compile (defun ,(intern (concat fun "-async")) ,(read args)
                             ,body)))))
 
-(defun he/get (id)
+(defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
-  (while (not (gethash id he/table))
-    (accept-process-output he/proc))
-  (let ((res (gethash id he/table)))
-    (remhash id he/table)
+  (while (not (gethash id haskell-emacs--table))
+    (accept-process-output haskell-emacs--proc))
+  (let ((res (gethash id haskell-emacs--table)))
+    (remhash id haskell-emacs--table)
     (read res)))
 
-(defun he/array-to-list (array)
+(defun haskell-emacs--array-to-list (array)
   "Take a sequence and turn all ARRAY to lists."
   (mapcar (lambda (x) (if (and (not (stringp x)) (or (arrayp x) (listp x)))
-                          (he/array-to-list x) x))
+                          (haskell-emacs--array-to-list x) x))
           array))
 
-(defun he/compile (code)
+(defun haskell-emacs--compile (code)
   "Inject into CODE a list of IMPORT and of EXPORT and compile it."
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
