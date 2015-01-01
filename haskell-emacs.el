@@ -147,12 +147,13 @@ supported, and only about ten different types."
     (dotimes (a 2)
       (setq arity-list (eval (haskell-emacs--fun-body "arityList" nil)))
       (haskell-emacs--compile
-       (eval (haskell-emacs--fun-body "formatCode"
-                          (list (list (car funs)
-                                      (car arity-list)
-                                      (eval (haskell-emacs--fun-body
-                                             "arityFormat" (cdr funs))))
-                                code))))
+       (eval (haskell-emacs--fun-body
+              "formatCode"
+              (list (list (car funs)
+                          (car arity-list)
+                          (eval (haskell-emacs--fun-body "arityFormat"
+                                                         (cdr funs))))
+                    code))))
       (eval start-proc))
     (set-process-sentinel haskell-emacs--proc (lambda (proc sign)
                                     (setq haskell-emacs--response nil)
