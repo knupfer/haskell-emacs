@@ -110,3 +110,11 @@ functions in emacs.
 If a haskell function crashes haskell-emacs a error will be thrown and
 the server process will be restarted immediately.  In this process,
 every async call will be obviously lost.
+* Future plans
+For performance and modularity reasons, I plan to turn curried haskell
+elisp functions into macros, which check whether it's argument is a
+haskell function.  With this knowledge, function calls can be fused
+and a succesion of for example 5 functions will be executed entirely
+on the haskell side, without the need, to receive and send back every
+result.  This would as well allow to run asynchronously a chained
+function call, which gives a lot of new oppertunities.
