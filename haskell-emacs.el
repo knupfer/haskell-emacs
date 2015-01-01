@@ -167,20 +167,22 @@ supported, and only about ten different types."
 
 (defun haskell-emacs--filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
-  (setq haskell-emacs--response (concat haskell-emacs--response output))
+  (unless (= 0 (length haskell-emacs--response))
+    (setq output (concat haskell-emacs--response output)
+          haskell-emacs--response nil))
   (let ((header)
         (dataLen)
         (p))
-    (while (and (setq p (string-match ")" haskell-emacs--response))
-                (<= (setq header (read haskell-emacs--response)
+    (while (and (setq p (string-match ")" output))
+                (<= (setq header (read output)
                           dataLen (+ (car header) 1 p))
-                    (length haskell-emacs--response)))
-      (let ((content (substring haskell-emacs--response
-                                (- dataLen (car header)) dataLen)))
-        (setq haskell-emacs--response (substring haskell-emacs--response
-                                                 dataLen))
-        (when (eq 3 (length header)) (error content))
-        (puthash (cadr header) content haskell-emacs--table)))))
+                    (length output)))
+      (let ((content (substring output (- dataLen (car header)) dataLen)))
+        (setq output (substring output dataLen))
+        (when (= 3 (length header)) (error content))
+        (puthash (cadr header) content haskell-emacs--table))))
+  (unless (= 0 (length output))
+    (setq haskell-emacs--response output)))
 
 (defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
@@ -202,7 +204,7 @@ supported, and only about ten different types."
                                      (haskell-emacs--array-to-list ARG))) ")")
                    (format "%S" ARG))))
              args))
-      (if (eql 1 (length arguments))
+      (if (= 1 (length arguments))
           (setq arguments (car arguments))
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
