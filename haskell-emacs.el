@@ -169,16 +169,16 @@ supported, and only about ten different types."
   "Haskell PROCESS filter for OUTPUT from functions."
   (setq haskell-emacs--response (concat haskell-emacs--response output))
   (let ((header)
-        (headLen)
+        (dataLen)
         (p))
     (while (and (setq p (string-match ")" haskell-emacs--response))
                 (<= (setq header (read haskell-emacs--response)
-                          headLen (+ (car header) 1 p))
+                          dataLen (+ (car header) 1 p))
                     (length haskell-emacs--response)))
       (let ((content (substring haskell-emacs--response
-                                (- headLen (car header)) headLen)))
+                                (- dataLen (car header)) dataLen)))
         (setq haskell-emacs--response (substring haskell-emacs--response
-                                                 headLen))
+                                                 dataLen))
         (when (eq 3 (length header)) (error content))
         (puthash (cadr header) content haskell-emacs--table)))))
 
