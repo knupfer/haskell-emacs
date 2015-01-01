@@ -169,7 +169,7 @@ supported, and only about ten different types."
   "Haskell PROCESS filter for OUTPUT from functions."
   (setq haskell-emacs--response (concat haskell-emacs--response output))
   (let* ((header (read haskell-emacs--response))
-         (headLen (+ (car header) (length (format "%s" header)))))
+         (headLen (+ (car header) 1 (string-match ")" haskell-emacs--response))))
     (while (<= headLen (length haskell-emacs--response))
       (let ((content (substring haskell-emacs--response
                                 (- headLen (car header)) headLen)))
@@ -179,7 +179,7 @@ supported, and only about ten different types."
         (puthash (cadr header) content haskell-emacs--table)
         (when (string-match ")" haskell-emacs--response)
           (setq header (read haskell-emacs--response)
-                headLen (+ (car header) (length (format "%s" header)))))))))
+                headLen (+ (car header) 1 (string-match ")" haskell-emacs--response))))))))
 
 (defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
