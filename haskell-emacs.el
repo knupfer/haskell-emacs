@@ -168,18 +168,19 @@ supported, and only about ten different types."
 (defun haskell-emacs--filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
   (setq haskell-emacs--response (concat haskell-emacs--response output))
-  (let* ((header (read haskell-emacs--response))
-         (headLen (+ (car header) 1 (string-match ")" haskell-emacs--response))))
-    (while (<= headLen (length haskell-emacs--response))
+  (let ((header)
+        (headLen)
+        (p))
+    (while (and (setq p (string-match ")" haskell-emacs--response))
+                (<= (setq header (read haskell-emacs--response)
+                          headLen (+ (car header) 1 p))
+                    (length haskell-emacs--response)))
       (let ((content (substring haskell-emacs--response
                                 (- headLen (car header)) headLen)))
         (setq haskell-emacs--response (substring haskell-emacs--response
                                                  headLen))
         (when (eq 3 (length header)) (error content))
-        (puthash (cadr header) content haskell-emacs--table)
-        (when (string-match ")" haskell-emacs--response)
-          (setq header (read haskell-emacs--response)
-                headLen (+ (car header) 1 (string-match ")" haskell-emacs--response))))))))
+        (puthash (cadr header) content haskell-emacs--table)))))
 
 (defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
