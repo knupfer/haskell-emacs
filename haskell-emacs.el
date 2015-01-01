@@ -246,8 +246,8 @@ supported, and only about ten different types."
                    (equal code (with-temp-buffer (insert-file-contents heF)
                                                  (buffer-string))))
         (insert code)
-        (write-file heF)
-        (message "Compiling ..."))
+        (write-file heF))
+      (message "Compiling ...")
       (if (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
                                (concat "-with-rtsopts=-N"
                                        (number-to-string haskell-emacs-cores))
