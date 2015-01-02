@@ -5,7 +5,7 @@
 import           Control.Applicative             ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
-import           Control.Monad                   (forever)
+import           Control.Monad                   (forever,(<=<))
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Lazy as A
 import qualified Data.ByteString.Lazy.Char8      as B
@@ -45,21 +45,24 @@ nextParse (c, _) = case parseInput c of A.Done a b -> (a,b)
 
 parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
 parseInput = A.parse $ do
-  a <- A.takeTill (A.inClass " ") <* A.string " "
-  b <- A.takeTill (A.inClass " ") <* A.string " "
-  c <- lisp                       <* A.string "\n"
-  return (run (decodeUtf8 a) (decodeUtf8 b), c)
+  fs <- A.many1 $ decodeUtf8 <$> A.takeTill (A.inClass "$ ") <* A.string "$"
+  b  <-           decodeUtf8 <$> A.takeTill (A.inClass " " ) <* A.string " "
+  c  <- lisp                                                 <* A.string "\n"
+  return (resultToText b . foldl1 (<=<) (map run fs), c)
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
-run :: Text -> Text -> Lisp -> Text
-run f resultId xs = "(" <> msgLength <> " " <> resultId <> result
-  where result    = fromJust (M.lookup f dispatcher) xs
-        msgLength = T.show . T.length . T.drop 1 $ T.dropWhile (/= ')') result
+run :: Text -> Lisp -> Result Lisp
+run f = fromJust (M.lookup f dispatcher)
+
+resultToText :: Text -> Result Lisp -> Text
+resultToText i l = case (decodeUtf8 . B.toStrict . encode) <$> l of
+         Success s -> "(" <> T.show (T.length s) <> " " <> i <> ")" <> s
+         Error s ->  "(" <> T.show (length s) <> " " <> i <> " t)" <> T.pack s
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
-dispatcher :: M.Map Text (Lisp -> Text)
+dispatcher :: M.Map Text (Lisp -> Result Lisp)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat)
   , ("allExports", transform allExports)
@@ -71,14 +74,8 @@ dispatcher = M.fromList $
 
 -- | Transform a curried function to a function which receives and
 -- returns a string in lisp syntax.
-transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Text
-transform f = fromResult . fmap (decodeUtf8 . B.toStrict . encode . f) . fromLisp
-
--- | Retrieves the contents of the result and annotates whether it was
--- a success.
-fromResult :: Result Text -> Text
-fromResult (Success s) = ")" <> s
-fromResult (Error s)   = " t)" <> T.pack s
+transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Result Lisp
+transform f = fmap (toLisp . f) . fromLisp
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher = T.intercalate "," . map fun

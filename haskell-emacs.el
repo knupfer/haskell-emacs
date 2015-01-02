@@ -56,6 +56,7 @@
 (defvar haskell-emacs--count 0)
 (defvar haskell-emacs--table (make-hash-table))
 (defvar haskell-emacs--proc nil)
+(defvar haskell-emacs--fun-list nil)
 
 ;;;###autoload
 (defun haskell-emacs-init ()
@@ -162,7 +163,8 @@ supported, and only about ten different types."
                                       (error "Haskell-emacs crashed"))))
     (set-process-query-on-exit-flag haskell-emacs--proc nil)
     (let ((arity (cadr arity-list)))
-      (mapc (lambda (func) (eval (haskell-emacs--fun-wrapper func (pop arity))))
+      (mapc (lambda (func)
+              (eval (haskell-emacs--fun-wrapper func (pop arity))))
             (cadr funs))))
   (message "Finished compiling."))
 
@@ -210,18 +212,52 @@ supported, and only about ten different types."
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
-     haskell-emacs--proc (concat fun " " (number-to-string haskell-emacs--count)
-                                 " " arguments "\n")))
+     haskell-emacs--proc (concat fun "$" (number-to-string haskell-emacs--count)
+                                 " " arguments
+                                 "\n")))
   (list 'haskell-emacs--get haskell-emacs--count))
 
 (defun haskell-emacs--fun-wrapper (fun args)
   "Take FUN with ARGS and return wrappers in elisp."
   (let ((body `(haskell-emacs--fun-body
                 ,fun ,(read (concat "(list " (substring args 1))))))
-    `(progn (byte-compile (defun ,(intern fun) ,(read args)
-                            (let ((haskell-emacs--count -1)) (eval ,body))))
-            (byte-compile (defun ,(intern (concat fun "-async")) ,(read args)
-                            ,body)))))
+    `(if (= 1 (length ',(read args)))
+         (progn
+           (add-to-list 'haskell-emacs--fun-list
+                        (eval (haskell-emacs--macros ,fun)))
+           (eval (haskell-emacs--macros ,fun t)))
+       (progn (add-to-list 'haskell-emacs--fun-list
+                           (defun ,(intern fun) ,(read args)
+                             (let ((haskell-emacs--count -1)) (eval ,body))))
+              (defun ,(intern (concat fun "-async")) ,(read args)
+                ,body)))))
+
+(defun haskell-emacs--macros (fun &optional async)
+  "Take FUN and return a macro which may be ASYNC."
+  `(defmacro ,(intern (concat fun (when async "-async"))) (x1)
+     (let ((argsM (make-symbol "args"))
+           (funsM (make-symbol "funs")))
+       `(let ((,argsM ',x1)
+              (,funsM))
+          (while (and (listp ,argsM)
+                      (member (car ,argsM) haskell-emacs--fun-list)
+                      (= 2 (length ,argsM)))
+            (setq ,funsM (concat ,funsM (format "$%s" (car ,argsM))))
+            (setq ,argsM (cadr ,argsM)))
+          (if (and (listp ,argsM)
+                   (member (car ,argsM) haskell-emacs--fun-list))
+              (progn
+                (setq ,funsM (concat ,funsM (format "$%s" (car ,argsM))))
+                (setq ,argsM (mapcar 'eval (cdr ,argsM))))
+            (setq ,argsM (list (eval ,argsM))))
+          (if ,,async
+              (progn (haskell-emacs--fun-body (concat ,,fun ,funsM)
+                                              ,argsM)
+                     (list 'haskell-emacs--get haskell-emacs--count))
+            (let ((haskell-emacs--count -1))
+              (haskell-emacs--fun-body (concat ,,fun ,funsM)
+                                       ,argsM))
+            (haskell-emacs--get 0))))))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
