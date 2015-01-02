@@ -116,7 +116,7 @@ emacs and from emacs back to haskell.  Obviously, fusioning syncronous
 functions gives only (huge) performance benefits for functions, where
 the overhead is the performance bottleneck.
 
-The third case is a async function (which can fuse as well) which
+The third case is an async function (which can fuse as well) which
 returns a future without blocking emacs.  Evaluating the future will
 return the result of the computation, or block and wait if it isn't
 already present.  Especially for async functions, the ability to fuse
@@ -124,7 +124,7 @@ is quite powerful:  You can glue together for example 4 costly
 computations which will execute all on the haskell side without
 the need to manually block for intermediate results.
 
-Considering big intermediate results (lets say a entire buffer), it's
+Considering big intermediate results (lets say an entire buffer), it's
 possible that fused functions are orders of magnitude faster by
 omitting the performance costs per char.
 
@@ -147,7 +147,7 @@ Polymorphic types are not well supported and higher functions aren't
 supported at all, you can't pass functions as arguments to haskell
 functions in emacs.
 
-If a haskell function crashes haskell-emacs a error will be thrown and
+If a haskell function crashes haskell-emacs an error will be thrown and
 the server process will be restarted immediately.  In this process,
 every async call will be obviously lost.
 
