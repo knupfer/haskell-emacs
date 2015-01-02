@@ -206,7 +206,7 @@ modularity and using haskell for even more basic tasks."
   (let ((arguments))
     (setq haskell-emacs--count (+ 1 haskell-emacs--count))
     (if (not args)
-        (setq arguments "0")
+        (setq arguments "nil")
       (setq arguments
             (mapcar
              (lambda (ARG)

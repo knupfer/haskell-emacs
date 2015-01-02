@@ -67,7 +67,7 @@ dispatcher :: M.Map Text (Lisp -> Result Lisp)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat)
   , ("allExports", transform allExports)
-  , ("arityList", transform . (const :: a -> Int -> a) $ toDispatcher arityList)
+  , ("arityList", transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode", transform $ uncurry formatCode)
   ] ++ [
   ---- <<export>> ----
@@ -82,7 +82,7 @@ toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher = T.intercalate "," . map fun
                &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
   where wrap t ts = "(\"" <> t <> "\",transform " <> ts <> ")"
-        fun (t,n) = wrap t $ case n of 0 -> "((const :: a -> Int -> a) " <> t <> ")"
+        fun (t,n) = wrap t $ case n of 0 -> "((const :: a -> Lisp -> a) " <> t <> ")"
                                        1 -> t
                                        _ -> "(\\(" <> T.intercalate "," (args n)
                                            <> ") -> " <> T.unwords (t:args n) <> ")"
