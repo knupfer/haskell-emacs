@@ -116,7 +116,21 @@ Or perhaps more convenient:
 
 Haskell-emacs can handle functions of arbitrary arity (including
 0), but you should note, that only monomorphic functions are
-supported, and only about ten different types."
+supported, and only about ten different types.
+
+Functions that take only one argument will be fused on Emacs
+side, this allows executing a chain of functions asynchronously:
+
+  (let ((result (Matrix.transpose-async (Matrix.transpose '((1 2) (3 4))))))
+
+    ;; other stuff
+
+    (eval result))
+     => ((1 2) (3 4))
+
+Furthermore, it nullifies the small performance overhead (0.07 ms
+per function call) between fused functions which allows more
+modularity and using haskell for even more basic tasks."
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (mkdir haskell-emacs-dir t))
@@ -157,10 +171,10 @@ supported, and only about ten different types."
                     code))))
       (eval start-proc))
     (set-process-sentinel haskell-emacs--proc (lambda (proc sign)
-                                    (setq haskell-emacs--response nil)
-                                    (haskell-emacs-init)
-                                    (let ((debug-on-error t))
-                                      (error "Haskell-emacs crashed"))))
+                                                (setq haskell-emacs--response nil)
+                                                (haskell-emacs-init)
+                                                (let ((debug-on-error t))
+                                                  (error "Haskell-emacs crashed"))))
     (set-process-query-on-exit-flag haskell-emacs--proc nil)
     (let ((arity (cadr arity-list)))
       (mapc (lambda (func)
