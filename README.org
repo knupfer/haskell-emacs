@@ -88,6 +88,46 @@ Unless you use haskell functions on megabytes of text or in very tight
 loops (which wouldn't be wise, transfer the whole task to haskell) the
 overhead is irrelevant.
 
+Additionally, if you watch close, haskell functions which take exactly one
+argument will get fused if their argument is a haskell function so you
+can define quite modular haskell functions and combine them on the
+lisp side and pay *only one time* the overhead.
+
+#+BEGIN_SRC emacs-lisp
+  (Matrix.transpose (Matrix.transpose '((1 2) (3 4))))
+     => ((1 2) (3 4))
+
+  (Matrix.transpose (identity (Matrix.transpose '((1 2) (3 4)))))
+     => ((1 2) (3 4))
+
+  (let ((result (Matrix.transpose-async (Matrix.transpose '((1 2) (3 4))))))
+
+    ;; other stuff
+
+    (eval result))
+     => ((1 2) (3 4))
+#+END_SRC
+
+In the upper example, the first and the third one is twice as fast as
+the second one.  In the second case, the identity function does
+nothing, but prevents the haskell functions to fuse.  The result is
+the same, but the intermediate result must be send over pipes back to
+emacs and from emacs back to haskell.  Obviously, fusioning syncronous
+functions gives only (huge) performance benefits for functions, where
+the overhead is the performance bottleneck.
+
+The third case is a async function (which can fuse as well) which
+returns a future without blocking emacs.  Evaluating the future will
+return the result of the computation, or block and wait if it isn't
+already present.  Especially for async functions, the ability to fuse
+is quite powerful:  You can glue together for example 4 costly
+computations which will execute all on the haskell side without
+the need to manually block for intermediate results.
+
+Considering big intermediate results (lets say a entire buffer), it's
+possible that fused functions are orders of magnitude faster by
+omitting the performance costs per char.
+
 * Dependencies
 You'll need:
 - ghc
@@ -110,11 +150,4 @@ functions in emacs.
 If a haskell function crashes haskell-emacs a error will be thrown and
 the server process will be restarted immediately.  In this process,
 every async call will be obviously lost.
-* Future plans
-For performance and modularity reasons, I plan to turn curried haskell
-elisp functions into macros, which check whether it's argument is a
-haskell function.  With this knowledge, function calls can be fused
-and a succesion of for example 5 functions will be executed entirely
-on the haskell side, without the need, to receive and send back every
-result.  This would as well allow to run asynchronously a chained
-function call, which gives a lot of new oppertunities.
+
