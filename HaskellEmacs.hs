@@ -57,8 +57,9 @@ run f = fromJust (M.lookup f dispatcher)
 
 resultToText :: Text -> Result Lisp -> Text
 resultToText i l = case (decodeUtf8 . B.toStrict . encode) <$> l of
-         Success s -> "(" <> T.show (T.length s) <> " " <> i <> ")" <> s
-         Error s ->  "(" <> T.show (length s) <> " " <> i <> " t)" <> T.pack s
+       Success s -> f         s  ""
+       Error s   -> f (T.pack s) " error"
+   where f t err = T.concat ["(", T.show $ T.length t, " ", i, err, ")", t]
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
