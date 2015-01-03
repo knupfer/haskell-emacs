@@ -46,29 +46,29 @@ nextParse (c, _) = case parseInput c of A.Done a b -> (a,b)
 parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
 parseInput = A.parse $ do
   fs <- A.many1 $ decodeUtf8 <$> A.takeTill (A.inClass "$ ") <* A.string "$"
-  b  <-           decodeUtf8 <$> A.takeTill (A.inClass " " ) <* A.string " "
-  c  <- lisp                                                 <* A.string "\n"
-  return (resultToText b . foldl1 (<=<) (map run fs), c)
+  i  <-           decodeUtf8 <$> A.takeTill (A.inClass " " ) <* A.string " "
+  l  <-                          lisp                        <* A.string "\n"
+  return (resultToText i . foldl1 (<=<) (map run fs), l)
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
 run :: Text -> Lisp -> Result Lisp
-run f = fromJust (M.lookup f dispatcher)
+run = fromJust . flip M.lookup dispatcher
 
 resultToText :: Text -> Result Lisp -> Text
-resultToText i l = case (decodeUtf8 . B.toStrict . encode) <$> l of
-       Success s -> f         s  ""
-       Error s   -> f (T.pack s) " error"
-   where f t err = T.concat ["(", T.show $ T.length t, " ", i, err, ")", t]
+resultToText i l = case decodeUtf8 . B.toStrict . encode <$> l of
+       Success s -> f ""         s
+       Error s   -> f " error" $ T.pack s
+   where f err t = T.concat ["(", T.show $ T.length t, " ", i, err, ")", t]
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
 dispatcher :: M.Map Text (Lisp -> Result Lisp)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat)
-  , ("allExports", transform allExports)
-  , ("arityList", transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
-  , ("formatCode", transform $ uncurry formatCode)
+  , ("allExports",  transform allExports)
+  , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
+  , ("formatCode",  transform $ uncurry formatCode)
   ] ++ [
   ---- <<export>> ----
   ]
@@ -82,10 +82,11 @@ toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher = T.intercalate "," . map fun
                &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
   where wrap t ts = "(\"" <> t <> "\",transform " <> ts <> ")"
-        fun (t,n) = wrap t $ case n of 0 -> "((const :: a -> Lisp -> a) " <> t <> ")"
-                                       1 -> t
-                                       _ -> "(\\(" <> T.intercalate "," (args n)
-                                           <> ") -> " <> T.unwords (t:args n) <> ")"
+        fun (t,n) = wrap t $ case n of
+                0 -> "((const :: a -> Lisp -> a) " <> t <> ")"
+                1 -> t
+                _ -> "(\\(" <> T.intercalate "," (args n)
+                    <> ") -> " <> T.unwords (t:args n) <> ")"
         args n = ["x" <> T.show x | x <- [1 .. n ]]
 
 -- Helperfunctions for bootstrapping.
@@ -103,8 +104,8 @@ formatCode (imports, exports, arities) = inject "arity"  arities
   where inject s = T.replace ("---- <<" <> s <> ">> ----")
 
 allExports :: [Text] -> (Text, [Text])
-allExports xs = T.concat . map head &&& concatMap tail $ l
-  where l = filter (not . null) $ map exportsGet xs
+allExports = g . filter (not . null) . map exportsGet
+  where g = T.unlines . map head &&& concatMap tail
 
 exportsGet :: Text -> [Text]
 exportsGet t
@@ -112,7 +113,7 @@ exportsGet t
   | otherwise       = (\(x:xs) -> imports x : map ((x <> ".") <>) xs) list
   where list = filter (not . T.null) . takeWhile (/= "where")
                . drop 1 . dropWhile (/= "module") $ T.split (`elem` "\n ,()\t") t
-        imports x = "import qualified " <> x <> "\n"
+        imports = (<>) "import qualified "
 
 arityFormat :: [Text] -> Text
 arityFormat = T.intercalate ","
