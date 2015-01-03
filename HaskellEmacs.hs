@@ -30,10 +30,10 @@ instance Arity f => Arity ((->) a f) where
 
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = do printer <- newEmptyMVar
-          forkIO . forever $ takeMVar printer >>= T.putStr >> hFlush stdout
+main = do printer <- newChan
+          forkIO . forever $ readChan printer >>= T.putStr >> hFlush stdout
           -- the lambda is necessary for a dependency on calculated tuples
-          mapM_ (\(fun,l) -> forkIO $ putMVar printer $! fun l)
+          mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
