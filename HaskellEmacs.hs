@@ -37,11 +37,8 @@ main = do printer <- newChan
                 =<< fullParse <$> B.getContents
 
 fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
-fullParse c = map snd . tail $ iterate nextParse (c,(const "",nil))
-
-nextParse :: (B.ByteString, t) -> (B.ByteString, (Lisp -> Text, Lisp))
-nextParse (c, _) = case parseInput c of A.Done a b -> (a,b)
-                                        A.Fail a _ _ -> (a, (const "",nil))
+fullParse c = case parseInput c of A.Done a b -> b : fullParse a
+                                   A.Fail {}  -> []
 
 parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
 parseInput = A.parse $ do
