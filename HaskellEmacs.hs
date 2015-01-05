@@ -66,7 +66,6 @@ dispatcher = M.fromList $
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
-  , ("test", transform ((*10) :: Int -> Int))
   ] ++ [
   ---- <<export>> ----
   ]
