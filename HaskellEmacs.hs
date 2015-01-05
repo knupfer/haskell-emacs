@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
----- <<import>> ----
+{--<<import>>--}
 import           Control.Applicative              ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
@@ -42,7 +42,7 @@ fullParse c = case parseInput c of A.Done a b -> b : fullParse a
 
 parseInput :: B.ByteString -> A.Result (Lisp -> B.ByteString, Lisp)
 parseInput = A.parse $ do
-  fs <- T.words . decodeUtf8 <$> AC.takeTill (=='\n') <* "\n"
+  fs <- T.words . decodeUtf8 <$> AC.takeTill (== '\n') <* "\n"
   i  <- AC.decimal <* "\n"
   l  <- lisp       <* "\n"
   return (resultToText i . foldl1 (<=<) (map run fs), l)
@@ -66,9 +66,7 @@ dispatcher = M.fromList $
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
-  ] ++ [
-  ---- <<export>> ----
-  ]
+  ] ++ [{--<<export>>--}]
 
 -- | Transform a curried function to a function which receives and
 -- returns a string in lisp syntax.
@@ -76,29 +74,25 @@ transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Result Lisp
 transform f = fmap (toLisp . f) . fromLisp
 
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
-toDispatcher = T.intercalate "," . map fun
-               &&& map (\(_,x) -> T.unwords $ "(":args x ++ [")"])
-  where wrap t ts = "(\"" <> t <> "\",transform " <> ts <> ")"
-        fun (t,n) = wrap t $ case n of
-                0 -> "((const :: a -> Lisp -> a) " <> t <> ")"
-                1 -> t
-                _ -> "(\\(" <> T.intercalate "," (args n)
-                    <> ") -> " <> T.unwords (t:args n) <> ")"
-        args n = [T.pack $ "x" ++ show x | x <- [1 .. n ]]
+toDispatcher = T.intercalate "," . map fun &&& map (pars . args . snd)
+  where args n    = T.unwords [T.pack $ 'x' : show x | x <- [1..n]]
+        pars x    = "(" <> x <> ")"
+        fun (t,n) = pars . wrap . T.unwords $ case n of
+          0 -> ["(const :: a -> Lisp -> a)", t]
+          1 -> [t]
+          _ -> ["\\", pars . T.replace " " "," $ args n, "->", t, args n]
+          where wrap ts = "\"" <> t <> "\",transform" <> pars ts
 
 -- Helperfunctions for bootstrapping.
 
 arityList :: [(Text,Int)]
-arityList =
-  [
-  ---- <<arity>> ----
-  ]
+arityList = [{--<<arity>>--}]
 
 formatCode :: (Text,Text,Text) -> Text -> Text
 formatCode (imports, exports, arities) = inject "arity"  arities
                                        . inject "export" exports
                                        . inject "import" imports
-  where inject s = T.replace ("---- <<" <> s <> ">> ----")
+  where inject s = T.replace ("{--<<" <> s <> ">>--}")
 
 allExports :: [Text] -> (Text, [Text])
 allExports = g . filter (not . null) . map exportsGet
