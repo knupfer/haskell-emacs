@@ -9,14 +9,14 @@ import           Control.Monad                    (forever,(<=<))
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.Attoparsec.ByteString.Lazy  as A
-import qualified Data.ByteString.Lazy.Char8       as B
+import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
+import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
 import           Data.Maybe                       (fromJust)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import           Data.Text.Encoding
-import qualified Data.Text.IO                     as T
 import           System.IO                        (hFlush, stdout)
 import qualified Text.Show.Text                   as T (show)
 
@@ -32,20 +32,20 @@ instance Arity f => Arity ((->) a f) where
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
 main = do printer <- newChan
-          forkIO . forever $ readChan printer >>= T.putStr >> hFlush stdout
+          forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
           -- the lambda is necessary for a dependency on calculated tuples
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
 
-fullParse :: B.ByteString -> [(Lisp -> Text, Lisp)]
+fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
 fullParse c = case parseInput c of A.Done a b -> b : fullParse a
                                    A.Fail {}  -> []
 
-parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
+parseInput :: B.ByteString -> A.Result (Lisp -> B.ByteString, Lisp)
 parseInput = A.parse $ do
-  fs <- T.words . decodeUtf8 <$> AC.takeTill (=='\n') <* AC.endOfLine
-  i  <- AC.decimal <* AC.endOfLine
-  l  <- lisp <* AC.endOfLine
+  fs <- T.words . decodeUtf8 <$> AC.takeTill (=='\n') <* "\n"
+  i  <- AC.decimal <* "\n"
+  l  <- lisp       <* "\n"
   return (resultToText i . foldl1 (<=<) (map run fs), l)
 
 -- | Takes a function and feeds it stdin until all input is given and
@@ -53,11 +53,11 @@ parseInput = A.parse $ do
 run :: Text -> Lisp -> Result Lisp
 run = fromJust . flip M.lookup dispatcher
 
-resultToText :: Int -> Result Lisp -> Text
-resultToText i l = case decodeUtf8 . B.toStrict . encode <$> l of
+resultToText :: Int -> Result Lisp -> B.ByteString
+resultToText i l = case encode <$> l of
        Success s -> f []           s
-       Error s   -> f [1] $ T.pack s
-   where f err t = decodeUtf8 (B.toStrict . encode $ [T.length t, i] ++ err) <> t
+       Error s   -> f [1] $ B.pack s
+   where f err t = encode ([B.length t, i] ++ err) <> t
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.
