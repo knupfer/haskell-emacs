@@ -2,22 +2,23 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 ---- <<import>> ----
-import           Control.Applicative             ((<$>), (<*))
+import           Control.Applicative              ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
-import           Control.Monad                   (forever,(<=<))
+import           Control.Monad                    (forever,(<=<))
 import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString.Lazy as A
-import qualified Data.ByteString.Lazy.Char8      as B
-import qualified Data.Map                        as M
-import           Data.Maybe                      (fromJust)
-import           Data.Monoid                     ((<>))
-import           Data.Text                       (Text)
-import qualified Data.Text                       as T
+import qualified Data.Attoparsec.ByteString.Char8 as AC
+import qualified Data.Attoparsec.ByteString.Lazy  as A
+import qualified Data.ByteString.Lazy.Char8       as B
+import qualified Data.Map                         as M
+import           Data.Maybe                       (fromJust)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text)
+import qualified Data.Text                        as T
 import           Data.Text.Encoding
-import qualified Data.Text.IO                    as T
-import           System.IO                       (hFlush, stdout)
-import qualified Text.Show.Text                  as T (show)
+import qualified Data.Text.IO                     as T
+import           System.IO                        (hFlush, stdout)
+import qualified Text.Show.Text                   as T (show)
 
 class Arity f where
   arity :: f -> Int
@@ -42,9 +43,9 @@ fullParse c = case parseInput c of A.Done a b -> b : fullParse a
 
 parseInput :: B.ByteString -> A.Result (Lisp -> Text, Lisp)
 parseInput = A.parse $ do
-  fs <- A.many1 $ decodeUtf8 <$> A.takeTill (A.inClass "$ ") <* A.string "$"
-  i  <-           decodeUtf8 <$> A.takeTill (A.inClass " " ) <* A.string " "
-  l  <-                          lisp                        <* A.string "\n"
+  fs <- T.words . decodeUtf8 <$> AC.takeTill (=='\n') <* AC.endOfLine
+  i  <- AC.decimal <* AC.endOfLine
+  l  <- lisp <* AC.endOfLine
   return (resultToText i . foldl1 (<=<) (map run fs), l)
 
 -- | Takes a function and feeds it stdin until all input is given and
@@ -52,11 +53,11 @@ parseInput = A.parse $ do
 run :: Text -> Lisp -> Result Lisp
 run = fromJust . flip M.lookup dispatcher
 
-resultToText :: Text -> Result Lisp -> Text
+resultToText :: Int -> Result Lisp -> Text
 resultToText i l = case decodeUtf8 . B.toStrict . encode <$> l of
-       Success s -> f ""         s
-       Error s   -> f " error" $ T.pack s
-   where f err t = T.concat ["(", T.show $ T.length t, " ", i, err, ")", t]
+       Success s -> f []           s
+       Error s   -> f [1] $ T.pack s
+   where f err t = decodeUtf8 (B.toStrict . encode $ [T.length t, i] ++ err) <> t
 
 -- | Map of available functions which get transformed to produce and
 -- receive strings.

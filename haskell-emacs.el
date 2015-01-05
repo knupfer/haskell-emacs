@@ -226,8 +226,8 @@ modularity and using haskell for even more basic tasks."
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
-     haskell-emacs--proc (concat fun "$" (number-to-string haskell-emacs--count)
-                                 " " arguments
+     haskell-emacs--proc (concat fun "\n" (number-to-string haskell-emacs--count)
+                                 "\n" arguments
                                  "\n")))
   (list 'haskell-emacs--get haskell-emacs--count))
 
@@ -256,12 +256,12 @@ modularity and using haskell for even more basic tasks."
           (while (and (listp ,argsM)
                       (member (car ,argsM) haskell-emacs--fun-list)
                       (= 2 (length ,argsM)))
-            (setq ,funsM (concat ,funsM (format "$%s" (car ,argsM))))
+            (setq ,funsM (concat ,funsM (format " %s" (car ,argsM))))
             (setq ,argsM (cadr ,argsM)))
           (if (and (listp ,argsM)
                    (member (car ,argsM) haskell-emacs--fun-list))
               (progn
-                (setq ,funsM (concat ,funsM (format "$%s" (car ,argsM))))
+                (setq ,funsM (concat ,funsM (format " %s" (car ,argsM))))
                 (setq ,argsM (mapcar 'eval (cdr ,argsM))))
             (setq ,argsM (list (eval ,argsM))))
           (if ,,async
