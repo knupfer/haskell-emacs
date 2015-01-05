@@ -133,7 +133,6 @@ You'll need:
 - ghc
 - attoparsec
 - atto-lisp
-- text-show
 
 Thats all.
 

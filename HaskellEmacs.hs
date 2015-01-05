@@ -18,7 +18,6 @@ import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import           Data.Text.Encoding
 import           System.IO                        (hFlush, stdout)
-import qualified Text.Show.Text                   as T (show)
 
 class Arity f where
   arity :: f -> Int
@@ -67,6 +66,7 @@ dispatcher = M.fromList $
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
+  , ("test", transform ((*10) :: Int -> Int))
   ] ++ [
   ---- <<export>> ----
   ]
@@ -85,7 +85,7 @@ toDispatcher = T.intercalate "," . map fun
                 1 -> t
                 _ -> "(\\(" <> T.intercalate "," (args n)
                     <> ") -> " <> T.unwords (t:args n) <> ")"
-        args n = ["x" <> T.show x | x <- [1 .. n ]]
+        args n = [T.pack $ "x" ++ show x | x <- [1 .. n ]]
 
 -- Helperfunctions for bootstrapping.
 

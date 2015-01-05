@@ -70,7 +70,6 @@ Dependencies:
  - GHC
  - attoparsec
  - atto-lisp
- - text-show
 
 Consider that you've got the following toy program:
 
