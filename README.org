@@ -1,3 +1,5 @@
+[[http://melpa.org/#/haskell-emacs][file:http://melpa.org/packages/haskell-emacs-badge.svg]]
+
 * What is it?
 =haskell-emacs= is a library which allows extending emacs in haskell.
 It provides an FFI (foreign function interface) for haskell functions.
@@ -112,7 +114,7 @@ In the upper example, the first and the third one is twice as fast as
 the second one.  In the second case, the identity function does
 nothing, but prevents the haskell functions to fuse.  The result is
 the same, but the intermediate result must be send over pipes back to
-emacs and from emacs back to haskell.  Obviously, fusioning syncronous
+emacs and from emacs back to haskell.  Obviously, fusioning synchronous
 functions gives only (huge) performance benefits for functions, where
 the overhead is the performance bottleneck.
 
