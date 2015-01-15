@@ -36,7 +36,7 @@
 
 ;;; Code:
 
-(defconst haskell-emacs-version 1.3)
+(defconst haskell-emacs-version 1.4)
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
@@ -156,7 +156,13 @@ modularity and using haskell for even more basic tasks."
                                   (start-process "hask" nil heE))
                             (set-process-filter haskell-emacs--proc
                                                 'haskell-emacs--filter))))
-    (unless (file-exists-p heE)
+    (unless (and (file-exists-p heE)
+                 (with-temp-buffer
+                   (insert-file-contents (concat haskell-emacs-dir heF))
+                   (re-search-forward
+                    (concat "-- haskell-emacs-version: "
+                            (number-to-string haskell-emacs-version))
+                    nil t)))
       (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
@@ -299,7 +305,10 @@ modularity and using haskell for even more basic tasks."
   "Use CODE to compile a new haskell Emacs programm."
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
-          (heF ".HaskellEmacs.hs"))
+          (heF ".HaskellEmacs.hs")
+          (code (concat "-- haskell-emacs-version: "
+                        (number-to-string haskell-emacs-version) "\n"
+                        code)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
