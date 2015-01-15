@@ -17,7 +17,7 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
-;; Version: 1.2
+;; Version: 1.3
 ;; email: fknupfer@gmail.com
 ;; Keywords: haskell, emacs, ffi
 ;; URL: https://github.com/knupfer/haskell-emacs
@@ -46,10 +46,16 @@
   :group 'haskell-emacs
   :type 'string)
 
-(defcustom haskell-emacs-cores 2
-  "Number of cores used for haskell Emacs."
+(defcustom haskell-emacs-ghc-flags '("-O2" "-threaded" "--make"
+                                     "-with-rtsopts=-N2")
+  "Flags which are used for compilation."
   :group 'haskell-emacs
-  :type 'integer)
+  :type '(repeat string))
+
+(defcustom haskell-emacs-ghc-executable "ghc"
+  "Executable used for compilation."
+  :group 'haskell-emacs
+  :type 'string)
 
 (defvar haskell-emacs--load-dir (file-name-directory load-file-name))
 (defvar haskell-emacs--response nil)
@@ -298,10 +304,8 @@ modularity and using haskell for even more basic tasks."
         (insert code)
         (write-file heF))
       (message "Compiling ...")
-      (if (eql 0 (call-process "ghc" nil heB nil "-O2" "-threaded" "--make"
-                               (concat "-with-rtsopts=-N"
-                                       (number-to-string haskell-emacs-cores))
-                               heF))
+      (if (eql 0 (apply 'call-process haskell-emacs-ghc-executable
+                        nil heB nil heF haskell-emacs-ghc-flags))
           (kill-buffer heB)
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
