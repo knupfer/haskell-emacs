@@ -17,7 +17,6 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
-;; Version: 1.3
 ;; email: fknupfer@gmail.com
 ;; Keywords: haskell, emacs, ffi
 ;; URL: https://github.com/knupfer/haskell-emacs
@@ -36,6 +35,8 @@
 ;; of usage.
 
 ;;; Code:
+
+(defconst haskell-emacs-version 1.3)
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
