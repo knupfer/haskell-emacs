@@ -152,3 +152,7 @@ If a haskell function crashes haskell-emacs an error will be thrown and
 the server process will be restarted immediately.  In this process,
 every async call will be obviously lost.
 
+* Contribute
+I highly encourage contributions of all sorts.  If you've got anything
+that doesn't behave as you like or doesn't exist and you would like to
+have it, let me know in an issue and I'll respond asap!
