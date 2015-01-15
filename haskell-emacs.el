@@ -175,11 +175,12 @@ modularity and using haskell for even more basic tasks."
                                                          (cdr funs))))
                     code))))
       (eval start-proc))
-    (set-process-sentinel haskell-emacs--proc (lambda (proc sign)
-                                                (setq haskell-emacs--response nil)
-                                                (haskell-emacs-init)
-                                                (let ((debug-on-error t))
-                                                  (error "Haskell-emacs crashed"))))
+    (set-process-sentinel haskell-emacs--proc
+                          (lambda (proc sign)
+                            (setq haskell-emacs--response nil)
+                            (haskell-emacs-init)
+                            (let ((debug-on-error t))
+                              (error "Haskell-emacs crashed"))))
     (set-process-query-on-exit-flag haskell-emacs--proc nil)
     (let ((arity (cadr arity-list)))
       (mapc (lambda (func)
@@ -231,7 +232,8 @@ modularity and using haskell for even more basic tasks."
         (setq arguments (mapcar (lambda (x) (concat x " ")) arguments)
               arguments (concat "(" (apply 'concat arguments) ")"))))
     (process-send-string
-     haskell-emacs--proc (concat fun "\n" (number-to-string haskell-emacs--count)
+     haskell-emacs--proc (concat fun "\n"
+                                 (number-to-string haskell-emacs--count)
                                  "\n" arguments
                                  "\n")))
   (list 'haskell-emacs--get haskell-emacs--count))
