@@ -36,7 +36,7 @@
 
 ;;; Code:
 
-(defconst haskell-emacs-version 1.4)
+(defconst haskell-emacs-version "1.4.1")
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
@@ -160,8 +160,7 @@ modularity and using haskell for even more basic tasks."
                  (with-temp-buffer
                    (insert-file-contents (concat haskell-emacs-dir heF))
                    (re-search-forward
-                    (concat "-- haskell-emacs-version: "
-                            (number-to-string haskell-emacs-version))
+                    (concat "-- haskell-emacs-version: " haskell-emacs-version)
                     nil t)))
       (haskell-emacs--compile code))
     (eval start-proc)
@@ -189,10 +188,22 @@ modularity and using haskell for even more basic tasks."
                             (let ((debug-on-error t))
                               (error "Haskell-emacs crashed"))))
     (set-process-query-on-exit-flag haskell-emacs--proc nil)
-    (let ((arity (cadr arity-list)))
+    (let ((arity (cadr arity-list))
+          (table-of-funs (make-hash-table :test 'equal)))
       (mapc (lambda (func)
-              (eval (haskell-emacs--fun-wrapper func (pop arity))))
-            (cadr funs))))
+              (let ((id (car (split-string func "\\."))))
+                (puthash id
+                         (concat (gethash id table-of-funs)
+                                 (format "%S" (haskell-emacs--fun-wrapper
+                                               func (car arity))))
+                         table-of-funs)))
+            (cadr funs))
+      (maphash (lambda (key value)
+                 (with-temp-buffer
+                   (let ((buffer-file-name (concat haskell-emacs-dir key ".hs")))
+                     (insert value)
+                     (eval-buffer))))
+               table-of-funs)))
   (message "Finished compiling."))
 
 (defun haskell-emacs--filter (process output)
@@ -306,8 +317,7 @@ modularity and using haskell for even more basic tasks."
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
           (heF ".HaskellEmacs.hs")
-          (code (concat "-- haskell-emacs-version: "
-                        (number-to-string haskell-emacs-version) "\n"
+          (code (concat "-- haskell-emacs-version: " haskell-emacs-version "\n"
                         code)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
