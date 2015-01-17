@@ -199,7 +199,7 @@ modularity and using haskell for even more basic tasks."
                 (puthash id
                          (concat (gethash id table-of-funs)
                                  (format "%S" (haskell-emacs--fun-wrapper
-                                               func (car arity))))
+                                               func (pop arity))))
                          table-of-funs)))
             (cadr funs))
       (maphash (lambda (key value)
