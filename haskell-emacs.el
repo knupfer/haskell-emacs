@@ -36,9 +36,12 @@
 
 ;;; Code:
 
-(defconst haskell-emacs-api-hash (with-temp-buffer
-                                   (insert-file-contents load-file-name)
-                                   (md5 (buffer-string))))
+(defconst haskell-emacs-api-hash
+  (with-temp-buffer
+    (insert-file-contents load-file-name)
+    (insert-file-contents
+     (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
+    (md5 (buffer-string))))
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
@@ -59,8 +62,6 @@
   "Executable used for compilation."
   :group 'haskell-emacs
   :type 'string)
-
-(setq DEBUG-FILE load-file-name)
 
 (defvar haskell-emacs--load-dir (file-name-directory load-file-name))
 (defvar haskell-emacs--response nil)
