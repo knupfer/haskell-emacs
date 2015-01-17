@@ -36,7 +36,9 @@
 
 ;;; Code:
 
-(defconst haskell-emacs-version "1.4.1")
+(defconst haskell-emacs-api-hash (with-temp-buffer
+                                   (insert-file-contents load-file-name)
+                                   (md5 (buffer-string))))
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
@@ -57,6 +59,8 @@
   "Executable used for compilation."
   :group 'haskell-emacs
   :type 'string)
+
+(setq DEBUG-FILE load-file-name)
 
 (defvar haskell-emacs--load-dir (file-name-directory load-file-name))
 (defvar haskell-emacs--response nil)
@@ -159,9 +163,8 @@ modularity and using haskell for even more basic tasks."
     (unless (and (file-exists-p heE)
                  (with-temp-buffer
                    (insert-file-contents (concat haskell-emacs-dir heF))
-                   (re-search-forward
-                    (concat "-- haskell-emacs-version: " haskell-emacs-version)
-                    nil t)))
+                   (re-search-forward (concat "-- " haskell-emacs-api-hash)
+                                      nil t)))
       (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
@@ -317,8 +320,7 @@ modularity and using haskell for even more basic tasks."
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
           (heF ".HaskellEmacs.hs")
-          (code (concat "-- haskell-emacs-version: " haskell-emacs-version "\n"
-                        code)))
+          (code (concat "-- " haskell-emacs-api-hash "\n" code)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
