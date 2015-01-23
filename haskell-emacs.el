@@ -278,45 +278,14 @@ modularity and using haskell for even more basic tasks."
 
 (defun haskell-emacs--fun-wrapper (fun args)
   "Take FUN with ARGS and return wrappers in elisp."
-  (let ((body `(haskell-emacs--fun-body
-                ,fun ,(read (concat "(list " (substring args 1))))))
-    `(if (= 1 (length ',(read args)))
-         (progn
-           (add-to-list 'haskell-emacs--fun-list
-                        (eval (haskell-emacs--macros ,fun)))
-           (eval (haskell-emacs--macros ,fun t)))
-       (progn (add-to-list 'haskell-emacs--fun-list
-                           (defun ,(intern fun) ,(read args)
-                             (let ((haskell-emacs--count -1)) (eval ,body))))
-              (defun ,(intern (concat fun "-async")) ,(read args)
-                ,body)))))
-
-(defun haskell-emacs--macros (fun &optional async)
-  "Take FUN and return a macro which may be ASYNC."
-  `(defmacro ,(intern (concat fun (when async "-async"))) (x1)
-     (let ((argsM (make-symbol "args"))
-           (funsM (make-symbol "funs")))
-       `(let ((,argsM ',x1)
-              (,funsM))
-          (while (and (listp ,argsM)
-                      (member (car ,argsM) haskell-emacs--fun-list)
-                      (= 2 (length ,argsM)))
-            (setq ,funsM (concat ,funsM (format " %s" (car ,argsM))))
-            (setq ,argsM (cadr ,argsM)))
-          (if (and (listp ,argsM)
-                   (member (car ,argsM) haskell-emacs--fun-list))
-              (progn
-                (setq ,funsM (concat ,funsM (format " %s" (car ,argsM))))
-                (setq ,argsM (mapcar 'eval (cdr ,argsM))))
-            (setq ,argsM (list (eval ,argsM))))
-          (if ,,async
-              (progn (haskell-emacs--fun-body (concat ,,fun ,funsM)
-                                              ,argsM)
-                     (list 'haskell-emacs--get haskell-emacs--count))
-            (let ((haskell-emacs--count -1))
-              (haskell-emacs--fun-body (concat ,,fun ,funsM)
-                                       ,argsM))
-            (haskell-emacs--get 0))))))
+  `(defmacro ,(intern (concat fun (when nil "-async"))) ,(read args)
+     "eae"
+     (process-send-string
+      haskell-emacs--proc (concat
+                           "0"
+                           (haskell-emacs--optimize-ast ,(cons 'list (cons `',(read fun) (read args))))
+                           "\n"))
+     (haskell-emacs--get 0)))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
