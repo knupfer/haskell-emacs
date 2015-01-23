@@ -5,7 +5,7 @@
 import           Control.Applicative              ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
-import           Control.Monad                    (forever,(<=<))
+import           Control.Monad                    (sequence,forever,(<=<))
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.Attoparsec.ByteString.Lazy  as A
@@ -36,16 +36,11 @@ main = do printer <- newChan
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
 
--- traverseLisp :: Lisp -> Result Lisp
-traverseLisp l = case l of
-                 List (Symbol a:xs) -> fromResult . run a $ List (map traverseLisp xs)
-                 List x -> List $ map traverseLisp x
-                 _ -> l
-
-fromResult :: Result Lisp -> Lisp
-fromResult res = case res of
-  Success l -> l
---  _ -> nil
+traverseLisp' :: Lisp -> Result Lisp
+traverseLisp' l = case l of
+    List (Symbol a:xs) -> run a =<< List <$> mapM traverseLisp' xs
+    List x -> List <$> mapM traverseLisp' x
+    _ -> Success l
 
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
 fullParse c = case parseInput c of A.Done a b -> b : fullParse a
