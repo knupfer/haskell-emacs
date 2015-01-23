@@ -5,7 +5,7 @@
 import           Control.Applicative              ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
-import           Control.Monad                    (forever,(<=<))
+import           Control.Monad                    (forever)
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.Attoparsec.ByteString.Lazy  as A
@@ -16,7 +16,6 @@ import           Data.Maybe                       (fromJust)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
-import           Data.Text.Encoding
 import           System.IO                        (hFlush, stdout)
 
 class Arity f where
@@ -37,10 +36,13 @@ main = do printer <- newChan
                 =<< fullParse <$> B.getContents
 
 traverseLisp :: Lisp -> Result Lisp
-traverseLisp l = case l of
-    List (Symbol fun:xs) -> run fun =<< List <$> mapM traverseLisp xs
-    List xs -> List <$> mapM traverseLisp xs
-    _ -> Success l
+traverseLisp (List (Symbol x:xs))
+  | x == "t" || x == "nil" = List <$> fmap ((:) (Symbol x)) (mapM traverseLisp xs)
+  | otherwise = run x =<< if length xs > 1
+                             then List <$> mapM traverseLisp xs
+                             else traverseLisp $ head xs
+traverseLisp (List xs) = List <$> mapM traverseLisp xs
+traverseLisp x = Success x
 
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
 fullParse c = case parseInput c of A.Done a b -> b : fullParse a
