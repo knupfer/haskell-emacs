@@ -5,7 +5,7 @@
 import           Control.Applicative              ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
-import           Control.Monad                    (sequence,forever,(<=<))
+import           Control.Monad                    (forever,(<=<))
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.Attoparsec.ByteString.Lazy  as A
@@ -36,10 +36,10 @@ main = do printer <- newChan
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
 
-traverseLisp' :: Lisp -> Result Lisp
-traverseLisp' l = case l of
-    List (Symbol a:xs) -> run a =<< List <$> mapM traverseLisp' xs
-    List x -> List <$> mapM traverseLisp' x
+traverseLisp :: Lisp -> Result Lisp
+traverseLisp l = case l of
+    List (Symbol fun:xs) -> run fun =<< List <$> mapM traverseLisp xs
+    List xs -> List <$> mapM traverseLisp xs
     _ -> Success l
 
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
@@ -48,10 +48,9 @@ fullParse c = case parseInput c of A.Done a b -> b : fullParse a
 
 parseInput :: B.ByteString -> A.Result (Lisp -> B.ByteString, Lisp)
 parseInput = A.parse $ do
-  fs <- T.words . decodeUtf8 <$> AC.takeTill (== '\n') <* "\n"
-  i  <- AC.decimal <* "\n"
-  l  <- lisp       <* "\n"
-  return (resultToText i . foldl1 (<=<) (map run fs), l)
+  i <- AC.decimal
+  l <- lisp <* "\n"
+  return (resultToText i . traverseLisp, l)
 
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
