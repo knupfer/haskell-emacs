@@ -36,6 +36,17 @@ main = do printer <- newChan
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
 
+-- traverseLisp :: Lisp -> Result Lisp
+traverseLisp l = case l of
+                 List (Symbol a:xs) -> fromResult . run a $ List (map traverseLisp xs)
+                 List x -> List $ map traverseLisp x
+                 _ -> l
+
+fromResult :: Result Lisp -> Lisp
+fromResult res = case res of
+  Success l -> l
+--  _ -> nil
+
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
 fullParse c = case parseInput c of A.Done a b -> b : fullParse a
                                    A.Fail {}  -> []
@@ -66,6 +77,7 @@ dispatcher = M.fromList $
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
+  , ("add", transform $ uncurry ((+) :: Int -> Int -> Int))
   ] ++ [{--<<export>>--}]
 
 -- | Transform a curried function to a function which receives and
