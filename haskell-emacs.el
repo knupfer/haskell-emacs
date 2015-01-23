@@ -263,13 +263,14 @@ modularity and using haskell for even more basic tasks."
   `(progn (add-to-list
            'haskell-emacs--fun-list
            (defmacro ,(intern fun) ,(read args)
-             (process-send-string
-              haskell-emacs--proc
-              (concat "0"
-                      (haskell-emacs--optimize-ast
-                       ,(cons 'list (cons `',(read fun) (read args))))
-                      "\n"))
-             (haskell-emacs--get 0)))
+             `(progn
+                (process-send-string
+                 haskell-emacs--proc
+                 (concat "0"
+                         ,(haskell-emacs--optimize-ast
+                           ,(cons 'list (cons `',(read fun) (read args))))
+                         "\n"))
+                (haskell-emacs--get 0))))
           (defmacro ,(intern (concat fun "-async")) ,(read args)
             (process-send-string
              haskell-emacs--proc

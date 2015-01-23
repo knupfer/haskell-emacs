@@ -73,7 +73,6 @@ dispatcher = M.fromList $
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
-  , ("add", transform $ uncurry ((+) :: Int -> Int -> Int))
   ] ++ [{--<<export>>--}]
 
 -- | Transform a curried function to a function which receives and
