@@ -38,9 +38,9 @@ main = do printer <- newChan
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp (List (Symbol x:xs))
   | x == "t" || x == "nil" = List <$> fmap ((:) (Symbol x)) (mapM traverseLisp xs)
-  | otherwise = run x =<< if length xs > 1
-                             then List <$> mapM traverseLisp xs
-                             else traverseLisp $ head xs
+  | otherwise = run x =<< if length xs == 1
+                             then traverseLisp $ head xs
+                             else List <$> mapM traverseLisp xs
 traverseLisp (List xs) = List <$> mapM traverseLisp xs
 traverseLisp x = Success x
 
