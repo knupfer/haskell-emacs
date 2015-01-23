@@ -260,6 +260,22 @@ modularity and using haskell for even more basic tasks."
                                  "\n")))
   (list 'haskell-emacs--get haskell-emacs--count))
 
+(defun haskell-emacs--optimize-ast (lisp)
+  "Optimize the ast of LISP."
+  (if (stringp lisp)
+      (format "%S" (substring-no-properties lisp))
+    (if (or (listp lisp) (arrayp lisp))
+        (if (and (symbolp (car lisp))
+                 (not (member (car lisp) haskell-emacs--fun-list)))
+            (haskell-emacs--optimize-ast (eval lisp))
+          (concat "("
+                  (apply 'concat
+                         (mapcar (lambda (x)
+                                   (concat (haskell-emacs--optimize-ast x) "\n"))
+                                 lisp))
+                  ")"))
+      (format "%s" lisp))))
+
 (defun haskell-emacs--fun-wrapper (fun args)
   "Take FUN with ARGS and return wrappers in elisp."
   (let ((body `(haskell-emacs--fun-body
