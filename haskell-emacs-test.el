@@ -80,15 +80,15 @@
                                       (HaskellEmacsTest.nextNum
                                        (HaskellEmacsTest.multiply
                                         (HaskellEmacsTest.multiply 1 2)
-                                        (HaskellEmacsTest.multiply 3 4)))))))))))))
-  (unless err
-    (setq err "No errors were found."))
-  (let ((result (concat err "\n\n"
-                        "Sync  fun call : " (format "%.1e" nothing) "\n"
-                        "Async fun call : " (format "%.1e" nothingMulti) "\n"
-                        "Costs per char : " (format "%.1e" long) "\n"
-                        "Fusion speed   : " (format "%s" fuse))))
-    (display-message-or-buffer result)))
+                                        (HaskellEmacsTest.multiply 3 4))))))))))))
+    (unless err
+      (setq err "No errors were found."))
+    (let ((result (concat err "\n\n"
+                          "Sync  fun call : " (format "%.1e" nothing) "\n"
+                          "Async fun call : " (format "%.1e" nothingMulti) "\n"
+                          "Costs per char : " (format "%.1e" long) "\n"
+                          "Fusion speed   : " (format "%s" fuse))))
+      (display-message-or-buffer result))))
 
 (provide 'haskell-emacs-test)
 ;;; haskell-emacs-test.el ends here
