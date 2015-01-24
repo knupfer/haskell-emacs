@@ -6,6 +6,7 @@ import           Control.Applicative              ((<$>), (<*))
 import           Control.Arrow
 import           Control.Concurrent
 import           Control.Monad                    (forever)
+import           Control.Parallel.Strategies
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.Attoparsec.ByteString.Lazy  as A
@@ -37,11 +38,12 @@ main = do printer <- newChan
 
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp (List (Symbol x:xs))
-  | x == "t" || x == "nil" = List <$> fmap ((:) (Symbol x)) (mapM traverseLisp xs)
+  | x == "t" || x == "nil" = List <$> fmap ((:) (Symbol x)) traverse
   | otherwise = run x =<< if length xs == 1
                              then traverseLisp $ head xs
-                             else List <$> mapM traverseLisp xs
-traverseLisp (List xs) = List <$> mapM traverseLisp xs
+                             else List <$> traverse
+  where traverse = sequence $ parMap rdeepseq traverseLisp xs
+traverseLisp (List xs) = List <$> sequence (parMap rdeepseq traverseLisp xs)
 traverseLisp x = Success x
 
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
