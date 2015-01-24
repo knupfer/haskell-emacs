@@ -53,7 +53,7 @@
   :type 'string)
 
 (defcustom haskell-emacs-ghc-flags '("-O2" "-threaded" "--make"
-                                     "-with-rtsopts=-N2")
+                                     "-with-rtsopts=-N")
   "Flags which are used for compilation."
   :group 'haskell-emacs
   :type '(repeat string))
