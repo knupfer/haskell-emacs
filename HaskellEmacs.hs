@@ -52,8 +52,8 @@ fullParse c = case parseInput c of A.Done a b -> b : fullParse a
 
 parseInput :: B.ByteString -> A.Result (Lisp -> B.ByteString, Lisp)
 parseInput = A.parse $ do
-  i <- AC.decimal
-  l <- lisp <* "\n"
+  i <- A.option 0 AC.decimal
+  l <- lisp
   return (resultToText i . traverseLisp, l)
 
 -- | Takes a function and feeds it stdin until all input is given and

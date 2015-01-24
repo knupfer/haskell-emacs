@@ -232,12 +232,9 @@ modularity and using haskell for even more basic tasks."
 (defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
   (process-send-string
-   haskell-emacs--proc (concat
-                        "0"
-                        (concat "(" fun " "
-                                (substring (haskell-emacs--optimize-ast args)
-                                           1))
-                        "\n"))
+   haskell-emacs--proc (concat "(" fun " "
+                               (substring (haskell-emacs--optimize-ast args)
+                                          1)))
   (list 'haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
@@ -266,10 +263,9 @@ modularity and using haskell for even more basic tasks."
              `(progn
                 (process-send-string
                  haskell-emacs--proc
-                 (concat "0"
-                         ,(haskell-emacs--optimize-ast
-                           ,(cons 'list (cons `',(read fun) (read args))))
-                         "\n"))
+                 (concat
+                  ,(haskell-emacs--optimize-ast
+                    ,(cons 'list (cons `',(read fun) (read args))))))
                 (haskell-emacs--get 0))))
           (defmacro ,(intern (concat fun "-async")) ,(read args)
             `(progn (process-send-string
@@ -278,8 +274,7 @@ modularity and using haskell for even more basic tasks."
                        (number-to-string (setq haskell-emacs--count
                                                (+ haskell-emacs--count 1)))
                        (haskell-emacs--optimize-ast
-                        ,(cons 'list (cons `',(read fun) (read args))))
-                       "\n"))
+                        ,(cons 'list (cons `',(read fun) (read args))))))
                     (quote (haskell-emacs--get ,haskell-emacs--count))))))
 
 (defun haskell-emacs--get (id)
