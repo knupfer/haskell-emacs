@@ -290,12 +290,6 @@ modularity and using haskell for even more basic tasks."
     (remhash id haskell-emacs--table)
     (read res)))
 
-(defun haskell-emacs--array-to-list (array)
-  "Take a sequence and turn all ARRAY to lists."
-  (mapcar (lambda (x) (if (and (not (stringp x)) (or (arrayp x) (listp x)))
-                          (haskell-emacs--array-to-list x) x))
-          array))
-
 (defun haskell-emacs--compile (code)
   "Use CODE to compile a new haskell Emacs programm."
   (with-temp-buffer
