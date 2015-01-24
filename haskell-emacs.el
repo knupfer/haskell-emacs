@@ -272,15 +272,15 @@ modularity and using haskell for even more basic tasks."
                          "\n"))
                 (haskell-emacs--get 0))))
           (defmacro ,(intern (concat fun "-async")) ,(read args)
-            (process-send-string
-             haskell-emacs--proc
-             (concat
-              (number-to-string (setq haskell-emacs--count
-                                      (+ haskell-emacs--count 1)))
-              (haskell-emacs--optimize-ast
-               ,(cons 'list (cons `',(read fun) (read args))))
-              "\n"))
-            `(quote (haskell-emacs--get ,haskell-emacs--count)))))
+            `(progn (process-send-string
+                     haskell-emacs--proc
+                     ,(concat
+                       (number-to-string (setq haskell-emacs--count
+                                               (+ haskell-emacs--count 1)))
+                       (haskell-emacs--optimize-ast
+                        ,(cons 'list (cons `',(read fun) (read args))))
+                       "\n"))
+                    (quote (haskell-emacs--get ,haskell-emacs--count))))))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
