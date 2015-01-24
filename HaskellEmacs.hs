@@ -56,6 +56,17 @@ parseInput = A.parse $ do
   l <- lisp
   return (resultToText i . traverseLisp, l)
 
+getDocumentation :: [T.Text]  -> T.Text -> [T.Text]
+getDocumentation funs code =
+  map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ ["\n"])
+      . reverse
+      . map (T.dropWhile (`elem` "- |"))
+      . takeWhile (T.isPrefixOf "-- ")
+      . reverse
+      $ takeWhile (not . T.isPrefixOf (f <> " ")) ls
+      ) funs
+  where ls = T.lines code
+
 -- | Takes a function and feeds it stdin until all input is given and
 -- prints the output.
 run :: Text -> Lisp -> Result Lisp
@@ -75,6 +86,7 @@ dispatcher = M.fromList $
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
+  , ("getDocumentation", transform $ uncurry getDocumentation)
   ] ++ [{--<<export>>--}]
 
 -- | Transform a curried function to a function which receives and

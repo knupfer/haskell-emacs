@@ -148,6 +148,7 @@ modularity and using haskell for even more basic tasks."
   (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$"))
         (process-connection-type nil)
         (arity-list)
+        (docs)
         (heF ".HaskellEmacs.hs")
         (heE (concat haskell-emacs-dir ".HaskellEmacs"))
         (code (with-temp-buffer
@@ -173,17 +174,23 @@ modularity and using haskell for even more basic tasks."
                                       (concat haskell-emacs-dir f))
                                      (buffer-string)))
                        funs)
-          funs (eval (haskell-emacs--fun-body "allExports" funs)))
+          docs (apply 'concat funs)
+          funs (haskell-emacs--fun-body "allExports" funs)
+          docs (haskell-emacs--fun-body
+                "getDocumentation"
+                (list (mapcar (lambda (x) (cadr (split-string x "\\.")))
+                              (cadr funs))
+                      docs)))
     (dotimes (a 2)
-      (setq arity-list (eval (haskell-emacs--fun-body "arityList" '(0))))
+      (setq arity-list (haskell-emacs--fun-body "arityList" '(0)))
       (haskell-emacs--compile
-       (eval (haskell-emacs--fun-body
-              "formatCode"
-              (list (list (car funs)
-                          (car arity-list)
-                          (eval (haskell-emacs--fun-body "arityFormat"
-                                                         (car (cdr funs)))))
-                    code))))
+       (haskell-emacs--fun-body
+        "formatCode"
+        (list (list (car funs)
+                    (car arity-list)
+                    (haskell-emacs--fun-body "arityFormat"
+                                             (car (cdr funs))))
+              code)))
       (eval start-proc))
     (set-process-sentinel haskell-emacs--proc
                           (lambda (proc sign)
@@ -199,7 +206,7 @@ modularity and using haskell for even more basic tasks."
                 (puthash id
                          (concat (gethash id table-of-funs)
                                  (format "%S" (haskell-emacs--fun-wrapper
-                                               func (pop arity))))
+                                               func (pop arity) (pop docs))))
                          table-of-funs)))
             (cadr funs))
       (maphash (lambda (key value)
@@ -235,7 +242,7 @@ modularity and using haskell for even more basic tasks."
    haskell-emacs--proc (concat "(" fun " "
                                (substring (haskell-emacs--optimize-ast args)
                                           1)))
-  (list 'haskell-emacs--get 0))
+  (haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
   "Optimize the ast of LISP."
@@ -255,11 +262,12 @@ modularity and using haskell for even more basic tasks."
                   ")"))
       (format "%s" lisp))))
 
-(defun haskell-emacs--fun-wrapper (fun args)
-  "Take FUN with ARGS and return wrappers in elisp."
+(defun haskell-emacs--fun-wrapper (fun args docs)
+  "Take FUN with ARGS and return wrappers in elisp with the DOCS."
   `(progn (add-to-list
            'haskell-emacs--fun-list
            (defmacro ,(intern fun) ,(read args)
+             ,docs
              `(progn
                 (process-send-string
                  haskell-emacs--proc
@@ -268,6 +276,7 @@ modularity and using haskell for even more basic tasks."
                     ,(cons 'list (cons `',(read fun) (read args))))))
                 (haskell-emacs--get 0))))
           (defmacro ,(intern (concat fun "-async")) ,(read args)
+            ,docs
             `(progn (process-send-string
                      haskell-emacs--proc
                      ,(concat
