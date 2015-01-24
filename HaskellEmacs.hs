@@ -2,7 +2,7 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {--<<import>>--}
-import           Control.Applicative              ((<$>), (<*))
+import           Control.Applicative              ((<$>))
 import           Control.Arrow
 import           Control.Concurrent
 import           Control.Monad                    (forever)
