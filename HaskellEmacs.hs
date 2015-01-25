@@ -58,7 +58,7 @@ parseInput = A.parse $ do
 
 getDocumentation :: [T.Text]  -> T.Text -> [T.Text]
 getDocumentation funs code =
-  map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ ["\n"])
+  map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ [""])
       . reverse
       . map (T.dropWhile (`elem` "- |"))
       . takeWhile (T.isPrefixOf "-- ")
