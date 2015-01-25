@@ -106,10 +106,10 @@ toDispatcher = T.intercalate "," . map fun &&& map (pars . args . snd)
 
 -- Helperfunctions for bootstrapping.
 
-arityList :: [(Text,Int)]
+arityList :: [(Text, Int)]
 arityList = [{--<<arity>>--}]
 
-formatCode :: (Text,Text,Text) -> Text -> Text
+formatCode :: (Text, Text, Text) -> Text -> Text
 formatCode (imports, exports, arities) = inject "arity"  arities
                                        . inject "export" exports
                                        . inject "import" imports
