@@ -37,14 +37,15 @@ main = do printer <- newChan
                 =<< fullParse <$> B.getContents
 
 traverseLisp :: Lisp -> Result Lisp
-traverseLisp (List (Symbol x:xs))
-  | x == "t" || x == "nil" = List <$> fmap ((:) (Symbol x)) traverse
-  | otherwise = run x =<< if length xs == 1
-                             then traverseLisp $ head xs
-                             else List <$> traverse
-  where traverse = sequence $ parMap rdeepseq traverseLisp xs
-traverseLisp (List xs) = List <$> sequence (parMap rdeepseq traverseLisp xs)
-traverseLisp x = Success x
+traverseLisp l = case l of
+  List (Symbol x:xs) -> sym x xs
+  List xs            -> list xs
+  _                  -> Success l
+  where traverse = sequence . parMap rdeepseq traverseLisp
+        list     = fmap List . traverse
+        sym x xs | x `elem` ["t", "nil"] = List . (:) (Symbol x) <$> traverse xs
+                 | length xs /= 1 = run x =<< List <$> traverse xs
+                 | otherwise = run x =<< traverseLisp (head xs)
 
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
 fullParse c = case parseInput c of A.Done a b -> b : fullParse a
