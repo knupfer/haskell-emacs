@@ -125,7 +125,8 @@ exportsGet t
   | length list < 2 = []
   | otherwise       = (\(x:xs) -> imports x : map ((x <> ".") <>) xs) list
   where list = filter (not . T.null) . takeWhile (/= "where")
-               . drop 1 . dropWhile (/= "module") $ T.split (`elem` "\n ,()\t") t
+               . drop 1 . dropWhile (/= "module") $ T.split (`elem` "\n ,()\t")
+               . T.unlines . map (fst . T.breakOn "--") $ T.lines t
         imports = (<>) "import qualified "
 
 arityFormat :: [Text] -> Text
