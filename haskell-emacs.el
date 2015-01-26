@@ -260,7 +260,10 @@ modularity and using haskell for even more basic tasks."
                                    (concat (haskell-emacs--optimize-ast x) "\n"))
                                  lisp))
                   ")"))
-      (format "%s" lisp))))
+      (if (and (symbolp lisp)
+               (not (member lisp haskell-emacs--fun-list)))
+          (format "%s" (eval lisp))
+        (format "%s" lisp)))))
 
 (defun haskell-emacs--fun-wrapper (fun args docs)
   "Take FUN with ARGS and return wrappers in elisp with the DOCS."
