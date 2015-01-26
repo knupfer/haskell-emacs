@@ -262,7 +262,7 @@ modularity and using haskell for even more basic tasks."
                   ")"))
       (if (and (symbolp lisp)
                (not (member lisp haskell-emacs--fun-list)))
-          (format "%s" (eval lisp))
+          (format "%S" (eval lisp))
         (format "%s" lisp)))))
 
 (defun haskell-emacs--fun-wrapper (fun args docs)
