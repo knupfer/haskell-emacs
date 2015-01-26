@@ -12,7 +12,8 @@
         (nothing)
         (long)
         (nothingMulti)
-        (fuse))
+        (fuse)
+        (num 5))
     (mapc
      (lambda (x)
        (unless (equal (eval (car x)) (cadr x))
@@ -35,6 +36,7 @@
        ((HaskellEmacsTest.anyTrue '(nil nil nil)) nil)
        ((HaskellEmacsTest.anyTrue '(nil nil t)) t)
        ((HaskellEmacsTest.nextNum 7) 8)
+       ((HaskellEmacsTest.nextNum num) 6)
        ((HaskellEmacsTest.summation '(1 2 3 10)) 16)
        ((HaskellEmacsTest.constant) 10.5)
        ((HaskellEmacsTest.squareRoot 4) 2.0)
