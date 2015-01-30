@@ -90,10 +90,10 @@ Unless you use haskell functions on megabytes of text or in very tight
 loops (which wouldn't be wise, transfer the whole task to haskell) the
 overhead is irrelevant.
 
-Additionally, if you watch close, haskell functions which take exactly one
-argument will get fused if their argument is a haskell function so you
-can define quite modular haskell functions and combine them on the
-lisp side and pay *only one time* the overhead.
+Additionally, if you watch close, haskell functions will recursively
+fuse with any of its arguments which are haskell functions so you can
+define quite modular haskell functions and combine them on the lisp
+side and pay *only one time* the overhead.
 
 #+BEGIN_SRC emacs-lisp
   (Matrix.transpose (Matrix.transpose '((1 2) (3 4))))
@@ -129,6 +129,11 @@ the need to manually block for intermediate results.
 Considering big intermediate results (lets say an entire buffer), it's
 possible that fused functions are orders of magnitude faster by
 omitting the performance costs per char.
+
+Every branch of a fused function will be evaluated in parallel on
+multiple cores, so if you call a function asynchronously which takes
+as arguments three haskell functions, your call will be evaluated on
+up to three cores in parallel and without blocking emacs.
 
 * Dependencies
 You'll need:
