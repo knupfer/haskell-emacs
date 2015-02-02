@@ -74,8 +74,8 @@ run :: Text -> Lisp -> Result Lisp
 run = fromJust . flip M.lookup dispatcher
 
 resultToText :: Int -> Result Lisp -> B.ByteString
-resultToText i l = case encode <$> l of
-       Success s -> f []           s
+resultToText i l = case l of
+       Success s -> f [ ] $ encode s
        Error s   -> f [1] $ B.pack s
    where f err t = encode ([B.length t, i] ++ err) <> t
 
