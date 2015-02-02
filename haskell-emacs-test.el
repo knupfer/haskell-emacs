@@ -73,18 +73,22 @@
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")))))
              20000))
-    (setq fuse (/ (car (benchmark-run 10000
-                         (HaskellEmacsTest.nextNum
-                          (+ (HaskellEmacsTest.nextNum
-                              (+ (HaskellEmacsTest.multiply
-                                  (+ (HaskellEmacsTest.multiply 1 2))
-                                  (+ (HaskellEmacsTest.multiply 3 4)))))))))
-                  (car (benchmark-run 10000
-                         (+ (+ (+ (+ (HaskellEmacsTest.nextNum
-                                      (HaskellEmacsTest.nextNum
-                                       (HaskellEmacsTest.multiply
-                                        (HaskellEmacsTest.multiply 1 2)
-                                        (HaskellEmacsTest.multiply 3 4))))))))))))
+    (setq fuse (/ (car (benchmark-run 5000
+                         (progn (HaskellEmacsTest.multiply 1 1)
+                                (HaskellEmacsTest.multiply 1 1)
+                                (HaskellEmacsTest.multiply 1 1)
+                                (HaskellEmacsTest.multiply 1 1)
+                                (HaskellEmacsTest.multiply 1 1)
+                                (HaskellEmacsTest.multiply 1 1)
+                                (HaskellEmacsTest.multiply 1 1))))
+                  (car (benchmark-run 5000
+                         (HaskellEmacsTest.multiply
+                          (HaskellEmacsTest.multiply
+                           (HaskellEmacsTest.multiply 1 1)
+                           (HaskellEmacsTest.multiply 1 1))
+                          (HaskellEmacsTest.multiply
+                           (HaskellEmacsTest.multiply 1 1)
+                           (HaskellEmacsTest.multiply 1 1)))))))
     (unless err
       (setq err "No errors were found."))
     (let ((result (concat err "\n\n"
