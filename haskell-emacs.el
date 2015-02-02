@@ -175,7 +175,7 @@ modularity and using haskell for even more basic tasks."
                                      (buffer-string)))
                        funs)
           docs (apply 'concat funs)
-          funs (haskell-emacs--fun-body "allExports" funs)
+          funs (haskell-emacs--fun-body "allExports" (apply 'list "" "" funs))
           docs (haskell-emacs--fun-body
                 "getDocumentation"
                 (list (mapcar (lambda (x) (cadr (split-string x "\\.")))
