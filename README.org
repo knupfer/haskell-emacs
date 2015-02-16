@@ -83,8 +83,7 @@ There is a (very) small overhead calling haskell functions, so for very
 trivial situations, elisp functions will be faster.  On my laptop
 (i5-4210, 2.7Ghz) it costs the following:
 - 0.07 ms per function call
-- 0.0005 ms per received char
-- 0.0004 ms per sended char
+- 0.0002 ms per sended or received char
 
 Unless you use haskell functions on megabytes of text or in very tight
 loops (which wouldn't be wise, transfer the whole task to haskell) the
