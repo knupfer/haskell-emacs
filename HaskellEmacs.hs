@@ -61,7 +61,7 @@ getDocumentation :: [T.Text]  -> T.Text -> [T.Text]
 getDocumentation funs code =
   map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ [""])
       . reverse
-      . map (T.dropWhile (`elem` "- |"))
+      . map (T.dropWhile (`elem` ("- |" :: String)))
       . takeWhile (T.isPrefixOf "-- ")
       . reverse
       $ takeWhile (not . T.isPrefixOf (f <> " ")) ls
@@ -125,7 +125,7 @@ exportsGet t
   | length list < 2 = []
   | otherwise       = (\(x:xs) -> imports x : map ((x <> ".") <>) xs) list
   where list = filter (not . T.null) . takeWhile (/= "where")
-               . drop 1 . dropWhile (/= "module") $ T.split (`elem` "\n ,()\t")
+               . drop 1 . dropWhile (/= "module") $ T.split (`elem` ("\n ,()\t" :: String))
                . T.unlines . map (fst . T.breakOn "--") $ T.lines t
         imports = (<>) "import qualified "
 
