@@ -41,10 +41,10 @@ traverseLisp l = case l of
   List (Symbol x:xs) -> sym x xs
   List xs            -> list xs
   _                  -> Success l
-  where traverse = sequence . parMap rdeepseq traverseLisp
-        list     = fmap List . traverse
-        sym x xs | x `elem` ["t", "nil"] = List . (:) (Symbol x) <$> traverse xs
-                 | length xs /= 1 = run x =<< List <$> traverse xs
+  where eval     = sequence . parMap rdeepseq traverseLisp
+        list     = fmap List . eval
+        sym x xs | x `elem` ["t", "nil"] = List . (:) (Symbol x) <$> eval xs
+                 | length xs /= 1 = run x =<< List <$> eval xs
                  | otherwise = run x =<< traverseLisp (head xs)
 
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
