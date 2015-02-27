@@ -2,7 +2,7 @@
 
 ;;; Commentary:
 
-;; Ensure that you've got a symlinc from HaskellEmacsTest.hs to your
+;; Ensure that you've got a symlink from HaskellEmacsTest.hs to your
 ;; `haskell-emacs-dir', reinitialize haskell-emacs and evaluate this
 ;; buffer.
 
