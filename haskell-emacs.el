@@ -186,11 +186,14 @@ modularity and using haskell for even more basic tasks."
                                   (start-process "hask" nil heE))
                             (set-process-filter haskell-emacs--proc
                                                 'haskell-emacs--filter))))
-    (unless (and (file-exists-p heE)
-                 (with-temp-buffer
-                   (insert-file-contents (concat haskell-emacs-dir heF))
-                   (re-search-forward (concat "-- " haskell-emacs-api-hash)
-                                      nil t)))
+    (unless
+        (and (file-exists-p heE)
+             (with-temp-buffer
+               (insert-file-contents (concat haskell-emacs-dir heF))
+               (re-search-forward
+                (concat "-- " haskell-emacs-api-hash "\n"
+                        "-- " (md5 (apply 'concat haskell-emacs--module-list)))
+                nil t)))
       (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
@@ -325,7 +328,9 @@ modularity and using haskell for even more basic tasks."
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
           (heF ".HaskellEmacs.hs")
-          (code (concat "-- " haskell-emacs-api-hash "\n" code)))
+          (code (concat "-- " haskell-emacs-api-hash "\n"
+                        "-- " (md5 (apply 'concat haskell-emacs--module-list))
+                        "\n" code)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
