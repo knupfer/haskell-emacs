@@ -72,6 +72,26 @@
 (defvar haskell-emacs--module-list nil)
 
 ;;;###autoload
+(defun haskell-emacs-register-module ()
+  "Register an external module.
+
+ If you want to distribute a haskell library for haskell-emacs
+ you'll have to write a elisp file which requires haskell-emacs
+ and registers your module which resides in the same directory.
+
+Example:
+
+  ;;; haskell-emacs-foo.el --- foo it!
+
+  ;;; Code:
+  (require 'haskell-emacs)
+  (haskell-emacs-register-module)
+  (provide 'haskell-emacs-foo)
+  ;;; haskell-emacs-foo.el ends here"
+  (add-to-list 'haskell-emacs--module-list (file-name-directory load-file-name))
+  (when haskell-emacs--proc (haskell-emacs-init)))
+
+;;;###autoload
 (defun haskell-emacs-init ()
   "Initialize haskell FFI or reload it to reflect changed functions.
 
