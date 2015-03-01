@@ -69,6 +69,7 @@
 (defvar haskell-emacs--table (make-hash-table))
 (defvar haskell-emacs--proc nil)
 (defvar haskell-emacs--fun-list nil)
+(defvar haskell-emacs--module-list nil)
 
 ;;;###autoload
 (defun haskell-emacs-init ()
@@ -145,7 +146,10 @@ modularity and using haskell for even more basic tasks."
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (mkdir haskell-emacs-dir t))
-  (let ((funs (directory-files haskell-emacs-dir nil "^[^.].*\.hs$"))
+  (let ((funs (apply 'append
+                     (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
+                             (apply 'list haskell-emacs-dir
+                                    haskell-emacs--module-list))))
         (process-connection-type nil)
         (arity-list)
         (docs)
@@ -170,8 +174,7 @@ modularity and using haskell for even more basic tasks."
       (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
-                                     (insert-file-contents
-                                      (concat haskell-emacs-dir f))
+                                     (insert-file-contents f)
                                      (buffer-string)))
                        funs)
           docs (apply 'concat funs)
@@ -311,7 +314,17 @@ modularity and using haskell for even more basic tasks."
         (write-file heF))
       (message "Compiling ...")
       (if (eql 0 (apply 'call-process haskell-emacs-ghc-executable
-                        nil heB nil heF haskell-emacs-ghc-flags))
+                        nil heB nil heF
+                        (if haskell-emacs--module-list
+                            (cons
+                             (concat "-i"
+                                     (substring
+                                      (apply 'concat
+                                             (mapcar (lambda (x) (concat ":" x))
+                                                     haskell-emacs--module-list))
+                                      1))
+                             haskell-emacs-ghc-flags)
+                          haskell-emacs-ghc-flags)))
           (kill-buffer heB)
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
