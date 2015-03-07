@@ -174,7 +174,8 @@ modularity and using haskell for even more basic tasks."
         (arity-list)
         (docs)
         (heF ".HaskellEmacs.hs")
-        (heE (concat haskell-emacs-dir ".HaskellEmacs"))
+        (heE (concat haskell-emacs-dir ".HaskellEmacs"
+                     (when (eq system-type 'windows-nt) ".exe")))
         (code (with-temp-buffer
                 (insert-file-contents
                  (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
