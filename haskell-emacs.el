@@ -166,27 +166,30 @@ modularity and using haskell for even more basic tasks."
   (interactive)
   (unless (file-directory-p haskell-emacs-dir)
     (mkdir haskell-emacs-dir t))
-  (let ((funs (apply 'append
-                     (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
-                             (apply 'list haskell-emacs-dir
-                                    haskell-emacs--module-list))))
-        (process-connection-type nil)
-        (arity-list)
-        (docs)
-        (heF ".HaskellEmacs.hs")
-        (heE (concat haskell-emacs-dir ".HaskellEmacs"
-                     (when (eq system-type 'windows-nt) ".exe")))
-        (code (with-temp-buffer
-                (insert-file-contents
-                 (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
-                (buffer-string)))
-        (start-proc '(progn (when haskell-emacs--proc
-                              (set-process-sentinel haskell-emacs--proc nil)
-                              (delete-process haskell-emacs--proc))
-                            (setq haskell-emacs--proc
-                                  (start-process "hask" nil heE))
-                            (set-process-filter haskell-emacs--proc
-                                                'haskell-emacs--filter))))
+  (let* ((funs (apply 'append
+                      (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
+                              (apply 'list haskell-emacs-dir
+                                     haskell-emacs--module-list))))
+         (process-connection-type nil)
+         (arity-list)
+         (docs)
+         (heF ".HaskellEmacs.hs")
+         (heE (concat haskell-emacs-dir ".HaskellEmacs"
+                      (when (eq system-type 'windows-nt) ".exe")))
+         (code (with-temp-buffer
+                 (insert-file-contents
+                  (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
+                 (buffer-string)))
+         (stop-proc '(when haskell-emacs--proc
+                       (set-process-sentinel haskell-emacs--proc nil)
+                       (delete-process haskell-emacs--proc)))
+         (start-proc '(progn
+                        (setq haskell-emacs--proc
+                              (start-process "hask" nil heE))
+                        (set-process-filter haskell-emacs--proc
+                                            'haskell-emacs--filter))))
+    (eval stop-proc)
+    (setq haskell-emacs--response nil)
     (unless
         (and (file-exists-p heE)
              (with-temp-buffer
@@ -217,15 +220,7 @@ modularity and using haskell for even more basic tasks."
                     (car arity-list)
                     (haskell-emacs--fun-body "arityFormat"
                                              (car (cdr funs))))
-              code)))
-      (eval start-proc))
-    (set-process-sentinel haskell-emacs--proc
-                          (lambda (proc sign)
-                            (setq haskell-emacs--response nil)
-                            (haskell-emacs-init)
-                            (let ((debug-on-error t))
-                              (error "Haskell-emacs crashed"))))
-    (set-process-query-on-exit-flag haskell-emacs--proc nil)
+              code))))
     (let ((arity (cadr arity-list))
           (table-of-funs (make-hash-table :test 'equal)))
       (mapc (lambda (func)
@@ -326,6 +321,9 @@ modularity and using haskell for even more basic tasks."
 
 (defun haskell-emacs--compile (code)
   "Use CODE to compile a new haskell Emacs programm."
+  (when haskell-emacs--proc
+    (set-process-sentinel haskell-emacs--proc nil)
+    (delete-process haskell-emacs--proc))
   (with-temp-buffer
     (let ((heB "*HASKELL-BUFFER*")
           (heF ".HaskellEmacs.hs")
@@ -354,7 +352,17 @@ modularity and using haskell for even more basic tasks."
           (kill-buffer heB)
         (let ((bug (with-current-buffer heB (buffer-string))))
           (kill-buffer heB)
-          (error bug))))))
+          (error bug)))))
+  (setq haskell-emacs--proc
+        (start-process "hask" nil
+                       (concat haskell-emacs-dir ".HaskellEmacs"
+                               (when (eq system-type 'windows-nt) ".exe"))))
+  (set-process-filter haskell-emacs--proc 'haskell-emacs--filter)
+  (set-process-query-on-exit-flag haskell-emacs--proc nil)
+  (set-process-sentinel haskell-emacs--proc
+                        (lambda (proc sign)
+                          (let ((debug-on-error t))
+                            (error "Haskell-emacs crashed")))))
 
 (provide 'haskell-emacs)
 
