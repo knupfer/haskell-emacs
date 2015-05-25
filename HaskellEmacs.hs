@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
-module HaskellEmacs where
+module Main where
 {--<<import>>--}
 import           Control.Applicative              ((<$>))
 import           Control.Arrow
