@@ -37,6 +37,8 @@ main = do printer <- newChan
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
 
+-- | Recursively evaluate a lisp in parallel, using functions defined
+-- by the user (see documentation of the emacs function `haskell-init').
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp l = case l of
   List (Symbol x:xs) -> sym x xs
@@ -48,16 +50,21 @@ traverseLisp l = case l of
                  | length xs /= 1 = run x =<< List <$> eval xs
                  | otherwise = run x =<< traverseLisp (head xs)
 
+-- | Takes an stream of instructions and returns a parsed list of
+-- functions.
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
 fullParse c = case parseInput c of A.Done a b -> b : fullParse a
                                    A.Fail {}  -> []
 
+-- | Parse an instruction and stamp the number of the instruction into
+-- the resulting function.
 parseInput :: B.ByteString -> A.Result (Lisp -> B.ByteString, Lisp)
 parseInput = A.parse $ do
   i <- A.option 0 AC.decimal
   l <- lisp
   return (resultToText i . traverseLisp, l)
 
+-- | Scrape the documentation of haskell functions to serve it in emacs.
 getDocumentation :: [T.Text]  -> T.Text -> [T.Text]
 getDocumentation funs code =
   map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ [""])
@@ -69,8 +76,7 @@ getDocumentation funs code =
       ) funs
   where ls = T.lines code
 
--- | Takes a function and feeds it stdin until all input is given and
--- prints the output.
+-- | Takes a function (described in a Text) and feeds it a lisp.
 run :: Text -> Lisp -> Result Lisp
 run = fromJust . flip M.lookup dispatcher
 
@@ -80,8 +86,7 @@ resultToText i l = case l of
        Error s   -> f [1] $ B.pack s
    where f err t = encode ([B.length t, i] ++ err) <> t
 
--- | Map of available functions which get transformed to produce and
--- receive strings.
+-- | Map of available functions which get transformed to work on lisp.
 dispatcher :: M.Map Text (Lisp -> Result Lisp)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat . normalize)
@@ -92,15 +97,18 @@ dispatcher = M.fromList $
   ] ++ [{--<<export>>--}]
 
 -- | Transform a curried function to a function which receives and
--- returns a string in lisp syntax.
+-- returns lisp forms.
 transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Result Lisp
 transform f = fmap (toLisp . f) . fromLisp
 
+-- | Prevent bad input for the bootstrap.
 normalize :: Lisp -> Lisp
 normalize l@(List _)      = l
 normalize l@(DotList _ _) = l
 normalize a               = List [a]
 
+-- | Takes tuples of function names and their arities and returns
+-- haskell source code which gets spliced back into a module.
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
 toDispatcher = T.intercalate "," . map fun &&& map (pars . args . snd)
   where args n    = T.unwords [T.pack $ 'x' : show x | x <- [1..n]]
@@ -111,21 +119,23 @@ toDispatcher = T.intercalate "," . map fun &&& map (pars . args . snd)
           _ -> ["\\", pars . T.replace " " "," $ args n, "->", t, args n]
           where wrap ts = "\"" <> t <> "\",transform" <> pars ts
 
--- Helperfunctions for bootstrapping.
-
+-- | List of functions and their arities (filled by emacs).
 arityList :: [(Text, Int)]
 arityList = [{--<<arity>>--}]
 
+-- | Splice user functions into the haskell module.
 formatCode :: (Text, Text, Text) -> Text -> Text
 formatCode (imports, exports, arities) = inject "arity"  arities
                                        . inject "export" exports
                                        . inject "import" imports
   where inject s = T.replace ("{--<<" <> s <> ">>--}")
 
+-- | Import statement of all modules and all their functions.
 allExports :: [Text] -> (Text, [Text])
 allExports = g . filter (not . null) . map exportsGet
   where g = T.unlines . map head &&& concatMap tail
 
+-- | Retrieve list of exported functions in a haskell module.
 exportsGet :: Text -> [Text]
 exportsGet t
   | length list < 2 = []
@@ -135,6 +145,7 @@ exportsGet t
                . T.unlines . map (fst . T.breakOn "--") $ T.lines t
         imports = (<>) "import qualified "
 
+-- | List of haskell functions which get querried for their arity.
 arityFormat :: [Text] -> Text
 arityFormat = T.intercalate ","
               . map (\x -> "(\"" <> x <> "\",arity " <> x <> ")")
