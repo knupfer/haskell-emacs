@@ -134,6 +134,31 @@ multiple cores, so if you call a function asynchronously which takes
 as arguments three haskell functions, your call will be evaluated on
 up to three cores in parallel and without blocking emacs.
 
+* Documentation
+Document your haskell functions!  The haddock strings will be parsed
+and put as the documentation for the elisp wrappers, so they are
+anytime available.  In any case, the emacs docs (C-h f) will show the
+arity and the type of the haskell functions.  Furthermore, it will
+indicate where the haskell function is defined and you can jump
+directly to that file, just as with elisp functions.  Thanks to an
+hack, emacs actually thinks that there resides an elisp function,
+which it will obviously not find, so it jumps only to the top of the
+module where the haskell function is defined.
+
+#+BEGIN_SRC emacs-lisp
+; C-h f Org.parseCsv
+Org\.parseCsv is a Lisp macro in `Org.hs'.
+
+(Org\.parseCsv X1)
+
+parseCsv :: T.Text -> T.Text
+
+Parses a string and returns an org-table somewhat
+faster (100x) than the corresponding elisp code.
+#+END_SRC
+
+Unfortunately, emacs doesn't like dots in function names in the help
+buffer.
 * Dependencies
 You'll need:
 - ghc
