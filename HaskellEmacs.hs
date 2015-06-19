@@ -84,7 +84,7 @@ resultToText i l = case l of
 -- receive strings.
 dispatcher :: M.Map Text (Lisp -> Result Lisp)
 dispatcher = M.fromList $
-  [ ("arityFormat", (transform arityFormat) . normalize)
+  [ ("arityFormat", transform arityFormat . normalize)
   , ("allExports",  transform allExports)
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
