@@ -164,9 +164,19 @@ You'll need:
 - ghc
 - attoparsec
 - atto-lisp
+- parallel
+- utf8-string
 
 Thats all.
 
+* Nixos
+The integration with NixOS is especially handled: compiling gets done
+in a pure =nix-shell= which is customizeable.  You don't need to
+install any dependency, it is taken care of by the =nix-shell=.  If
+you use in your custom functions other packages, you need to write
+these dependencies into the variable =haskell-emacs-nix-shell-args=
+(use customize).  If this isn't convenient for your workflow, you can
+remove the =--pure= flag from the shell.
 * Shortcomings
 About 10 types are recognized as input, and about 10 types of output
 can be transformed into an elisp type.  Thats quite good, but not
