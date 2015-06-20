@@ -58,6 +58,16 @@
   :group 'haskell-emacs
   :type '(repeat string))
 
+(defcustom haskell-emacs-nix-shell-args
+  '("--pure" "-p"
+    "haskellPackages.ghc"
+    "haskellPackages.attoLisp"
+    "haskellPackages.parallel"
+    "haskellPackages.utf8String")
+  "Environment used to compile the modules when on an nixos machine."
+  :group 'haskell-emacs
+  :type '(repeat string))
+
 (defcustom haskell-emacs-ghc-executable "ghc"
   "Executable used for compilation."
   :group 'haskell-emacs
@@ -70,6 +80,9 @@
 (defvar haskell-emacs--proc nil)
 (defvar haskell-emacs--fun-list nil)
 (defvar haskell-emacs--module-list nil)
+(defvar haskell-emacs--is-nixos
+  (when (eq system-type 'gnu/linux)
+    (string-match " nixos " (shell-command-to-string "uname -a"))))
 
 ;;;###autoload
 (defun haskell-emacs-register-module ()
@@ -337,22 +350,29 @@ modularity and using haskell for even more basic tasks."
         (insert code)
         (write-file heF))
       (message "Compiling ...")
-      (if (eql 0 (apply 'call-process haskell-emacs-ghc-executable
-                        nil heB nil heF
-                        (if haskell-emacs--module-list
-                            (cons
-                             (concat "-i"
-                                     (substring
-                                      (apply 'concat
-                                             (mapcar (lambda (x) (concat ":" x))
-                                                     haskell-emacs--module-list))
-                                      1))
-                             haskell-emacs-ghc-flags)
-                          haskell-emacs-ghc-flags)))
-          (kill-buffer heB)
-        (let ((bug (with-current-buffer heB (buffer-string))))
-          (kill-buffer heB)
-          (error bug)))))
+      (let ((args (cons heF (if haskell-emacs--module-list
+                                (cons (concat
+                                       "-i"
+                                       (substring
+                                        (apply 'concat
+                                               (mapcar (lambda (x) (concat ":" x))
+                                                       haskell-emacs--module-list)) 1))
+                                      haskell-emacs-ghc-flags)
+                               haskell-emacs-ghc-flags))))
+        (if (eql 0 (apply 'call-process (if haskell-emacs--is-nixos "nix-shell"
+                                          haskell-emacs-ghc-executable)
+                          nil heB nil
+                          (if haskell-emacs--is-nixos
+                              (append haskell-emacs-nix-shell-args
+                                      (list "--command"
+                                            (apply 'concat haskell-emacs-ghc-executable
+                                                   (mapcar (lambda (x) (concat " " x))
+                                                           args))))
+                            args)))
+            (kill-buffer heB)
+          (let ((bug (with-current-buffer heB (buffer-string))))
+            (kill-buffer heB)
+            (error bug))))))
   (setq haskell-emacs--proc
         (start-process "hask" nil
                        (concat haskell-emacs-dir ".HaskellEmacs"
