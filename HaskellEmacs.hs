@@ -14,7 +14,7 @@ import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (fromJust)
+import           Data.Maybe                       (fromJust,fromMaybe)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
@@ -41,14 +41,14 @@ main = do printer <- newChan
 -- by the user (see documentation of the emacs function `haskell-init').
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp l = case l of
-  List (Symbol x:xs) -> sym x xs
+  List (Symbol x:xs) -> sym (T.filter (/='\\') x) xs
   List xs            -> list xs
   _                  -> Success l
   where eval     = sequence . parMap rdeepseq traverseLisp
         list     = fmap List . eval
-        sym x xs | x `elem` ["t", "nil"] = List . (:) (Symbol x) <$> eval xs
-                 | length xs /= 1 = run (T.filter (/='\\') x) =<< List <$> eval xs
-                 | otherwise = run (T.filter (/='\\') x) =<< traverseLisp (head xs)
+        sym x xs | x `notElem` M.keys dispatcher = List . (:) (Symbol x) <$> eval xs
+                 | length xs /= 1 = run x =<< List <$> eval xs
+                 | otherwise = run x =<< traverseLisp (head xs)
 
 -- | Takes an stream of instructions and returns a parsed list of
 -- functions.

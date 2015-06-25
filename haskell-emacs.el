@@ -310,9 +310,13 @@ modularity and using haskell for even more basic tasks."
   "Retrieve result from haskell process with ID."
   (while (not (gethash id haskell-emacs--table))
     (accept-process-output haskell-emacs--proc))
-  (let ((res (gethash id haskell-emacs--table)))
+  (let ((res (read (gethash id haskell-emacs--table))))
     (remhash id haskell-emacs--table)
-    (read res)))
+    (if (and (listp res)
+             (or (functionp (car res))
+                 (macrop (car res))))
+        (eval res)
+      res)))
 
 (defun haskell-emacs--compile (code)
   "Use CODE to compile a new haskell Emacs programm."
