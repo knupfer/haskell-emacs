@@ -274,9 +274,7 @@ modularity and using haskell for even more basic tasks."
 (defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
   (process-send-string
-   haskell-emacs--proc (concat "(" fun " "
-                               (substring (haskell-emacs--optimize-ast-raw args)
-                                          1)))
+   haskell-emacs--proc (concat "(" fun " " (substring (format "%S" args) 1)))
   (haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
@@ -285,28 +283,6 @@ modularity and using haskell for even more basic tasks."
               (member (car lisp) haskell-emacs--fun-list))
          (cons (car lisp) (mapcar 'haskell-emacs--optimize-ast (cdr lisp)))
        (eval lisp)))
-
-(defun haskell-emacs--optimize-ast-raw (lisp)
-  "Optimize the ast of LISP."
-  (if (stringp lisp)
-      (format "%S" (substring-no-properties lisp))
-    (if (or (listp lisp) (arrayp lisp))
-        (if (and (symbolp (car lisp))
-                 (not (member (car lisp) haskell-emacs--fun-list))
-                 (not (equal t (car lisp)))
-                 (not (equal nil (car lisp))))
-            (haskell-emacs--optimize-ast-raw (eval lisp))
-          (concat "("
-                  (apply 'concat
-                         (mapcar (lambda (x)
-                                   (concat (haskell-emacs--optimize-ast-raw x)
-                                           "\n"))
-                                 lisp))
-                  ")"))
-      (if (and (symbolp lisp)
-               (not (member lisp haskell-emacs--fun-list)))
-          (format "%S" (eval lisp))
-        (format "%s" lisp)))))
 
 (defun haskell-emacs--fun-wrapper (fun args docs)
   "Take FUN with ARGS and return wrappers in elisp with the DOCS."
@@ -360,9 +336,10 @@ modularity and using haskell for even more basic tasks."
                                 (cons (concat
                                        "-i"
                                        (substring
-                                        (apply 'concat
-                                               (mapcar (lambda (x) (concat ":" x))
-                                                       haskell-emacs--module-list)) 1))
+                                        (apply
+                                         'concat
+                                         (mapcar (lambda (x) (concat ":" x))
+                                                 haskell-emacs--module-list)) 1))
                                       haskell-emacs-ghc-flags)
                                haskell-emacs-ghc-flags))))
         (if (eql 0 (apply 'call-process (if haskell-emacs--is-nixos "nix-shell"
@@ -370,10 +347,11 @@ modularity and using haskell for even more basic tasks."
                           nil heB nil
                           (if haskell-emacs--is-nixos
                               (append haskell-emacs-nix-shell-args
-                                      (list "--command"
-                                            (apply 'concat haskell-emacs-ghc-executable
-                                                   (mapcar (lambda (x) (concat " " x))
-                                                           args))))
+                                      (list
+                                       "--command"
+                                       (apply 'concat haskell-emacs-ghc-executable
+                                              (mapcar (lambda (x) (concat " " x))
+                                                      args))))
                             args)))
             (kill-buffer heB)
           (let ((bug (with-current-buffer heB (buffer-string))))
