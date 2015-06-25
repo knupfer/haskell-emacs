@@ -47,8 +47,8 @@ traverseLisp l = case l of
   where eval     = sequence . parMap rdeepseq traverseLisp
         list     = fmap List . eval
         sym x xs | x `elem` ["t", "nil"] = List . (:) (Symbol x) <$> eval xs
-                 | length xs /= 1 = run x =<< List <$> eval xs
-                 | otherwise = run x =<< traverseLisp (head xs)
+                 | length xs /= 1 = run (T.filter (/='\\') x) =<< List <$> eval xs
+                 | otherwise = run (T.filter (/='\\') x) =<< traverseLisp (head xs)
 
 -- | Takes an stream of instructions and returns a parsed list of
 -- functions.

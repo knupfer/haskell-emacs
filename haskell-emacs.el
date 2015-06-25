@@ -275,11 +275,18 @@ modularity and using haskell for even more basic tasks."
   "Generate function body for FUN with ARGS."
   (process-send-string
    haskell-emacs--proc (concat "(" fun " "
-                               (substring (haskell-emacs--optimize-ast args)
+                               (substring (haskell-emacs--optimize-ast-raw args)
                                           1)))
   (haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
+    "Optimize the ast of LISP."
+   (if (and (listp lisp)
+              (member (car lisp) haskell-emacs--fun-list))
+         (cons (car lisp) (mapcar 'haskell-emacs--optimize-ast (cdr lisp)))
+       (eval lisp)))
+
+(defun haskell-emacs--optimize-ast-raw (lisp)
   "Optimize the ast of LISP."
   (if (stringp lisp)
       (format "%S" (substring-no-properties lisp))
@@ -288,11 +295,12 @@ modularity and using haskell for even more basic tasks."
                  (not (member (car lisp) haskell-emacs--fun-list))
                  (not (equal t (car lisp)))
                  (not (equal nil (car lisp))))
-            (haskell-emacs--optimize-ast (eval lisp))
+            (haskell-emacs--optimize-ast-raw (eval lisp))
           (concat "("
                   (apply 'concat
                          (mapcar (lambda (x)
-                                   (concat (haskell-emacs--optimize-ast x) "\n"))
+                                   (concat (haskell-emacs--optimize-ast-raw x)
+                                           "\n"))
                                  lisp))
                   ")"))
       (if (and (symbolp lisp)
@@ -306,23 +314,21 @@ modularity and using haskell for even more basic tasks."
            'haskell-emacs--fun-list
            (defmacro ,(intern fun) ,(read args)
              ,docs
-             `(progn
-                (process-send-string
-                 haskell-emacs--proc
-                 (concat
-                  ,(haskell-emacs--optimize-ast
-                    ,(cons 'list (cons `',(read fun) (read args))))))
-                (haskell-emacs--get 0))))
+             `(progn (process-send-string
+                      haskell-emacs--proc
+                      (format "%S" (haskell-emacs--optimize-ast
+                                    ',(cons ',(read fun) (list ,@(read args))))))
+                     (haskell-emacs--get 0))))
           (defmacro ,(intern (concat fun "-async")) ,(read args)
             ,docs
             `(progn (process-send-string
                      haskell-emacs--proc
-                     ,(concat
-                       (number-to-string (setq haskell-emacs--count
-                                               (+ haskell-emacs--count 1)))
-                       (haskell-emacs--optimize-ast
-                        ,(cons 'list (cons `',(read fun) (read args))))))
-                    (quote (haskell-emacs--get ,haskell-emacs--count))))))
+                     (format (concat (number-to-string
+                                      (setq haskell-emacs--count
+                                            (+ haskell-emacs--count 1))) "%S")
+                             (haskell-emacs--optimize-ast
+                              ',(cons ',(read fun) (list ,@(read args))))))
+                    (list 'haskell-emacs--get haskell-emacs--count)))))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
