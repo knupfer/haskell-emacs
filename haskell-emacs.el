@@ -218,20 +218,20 @@ modularity and using haskell for even more basic tasks."
                                      (buffer-string)))
                        funs)
           docs (apply 'concat funs)
-          funs (haskell-emacs--fun-body "allExports" (apply 'list "" "" funs))
+          funs (haskell-emacs--fun-body 'allExports (apply 'list "" "" funs))
           docs (haskell-emacs--fun-body
-                "getDocumentation"
+                'getDocumentation
                 (list (mapcar (lambda (x) (cadr (split-string x "\\.")))
                               (cadr funs))
                       docs)))
     (dotimes (a 2)
-      (setq arity-list (haskell-emacs--fun-body "arityList" '(0)))
+      (setq arity-list (haskell-emacs--fun-body 'arityList '(0)))
       (haskell-emacs--compile
        (haskell-emacs--fun-body
-        "formatCode"
+        'formatCode
         (list (list (car funs)
                     (car arity-list)
-                    (haskell-emacs--fun-body "arityFormat"
+                    (haskell-emacs--fun-body 'arityFormat
                                              (car (cdr funs))))
               code))))
     (let ((arity (cadr arity-list))
@@ -241,7 +241,7 @@ modularity and using haskell for even more basic tasks."
                 (puthash id
                          (concat (gethash id table-of-funs)
                                  (format "%S" (haskell-emacs--fun-wrapper
-                                               func (pop arity) (pop docs))))
+                                               (read func) (read (pop arity)) (pop docs))))
                          table-of-funs)))
             (cadr funs))
       (maphash (lambda (key value)
@@ -274,7 +274,7 @@ modularity and using haskell for even more basic tasks."
 (defun haskell-emacs--fun-body (fun args)
   "Generate function body for FUN with ARGS."
   (process-send-string
-   haskell-emacs--proc (concat "(" fun " " (substring (format "%S" args) 1)))
+   haskell-emacs--proc (format "%S" (cons fun args)))
   (haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
@@ -288,14 +288,14 @@ modularity and using haskell for even more basic tasks."
   "Take FUN with ARGS and return wrappers in elisp with the DOCS."
   `(progn (add-to-list
            'haskell-emacs--fun-list
-           (defmacro ,(intern fun) ,(read args)
+           (defmacro ,fun ,args
              ,docs
              `(progn (process-send-string
                       haskell-emacs--proc
                       (format "%S" (haskell-emacs--optimize-ast
-                                    ',(cons ',(read fun) (list ,@(read args))))))
+                                    ',(cons ',fun (list ,@args)))))
                      (haskell-emacs--get 0))))
-          (defmacro ,(intern (concat fun "-async")) ,(read args)
+          (defmacro ,(read (concat (format "%s" fun) "-async")) ,args
             ,docs
             `(progn (process-send-string
                      haskell-emacs--proc
@@ -303,7 +303,7 @@ modularity and using haskell for even more basic tasks."
                                       (setq haskell-emacs--count
                                             (+ haskell-emacs--count 1))) "%S")
                              (haskell-emacs--optimize-ast
-                              ',(cons ',(read fun) (list ,@(read args))))))
+                              ',(cons ',fun (list ,@args)))))
                     (list 'haskell-emacs--get haskell-emacs--count)))))
 
 (defun haskell-emacs--get (id)
