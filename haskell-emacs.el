@@ -59,11 +59,7 @@
   :type '(repeat string))
 
 (defcustom haskell-emacs-nix-shell-args
-  '("--pure" "-p"
-    "haskellPackages.ghc"
-    "haskellPackages.attoLisp"
-    "haskellPackages.parallel"
-    "haskellPackages.utf8String")
+  '("-p")
   "Environment used to compile the modules when on an nixos machine."
   :group 'haskell-emacs
   :type '(repeat string))
