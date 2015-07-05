@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
+
 module Main where
 {--<<import>>--}
 import           Control.Applicative              ((<$>))
@@ -8,17 +9,20 @@ import           Control.Arrow
 import           Control.Concurrent
 import           Control.Monad                    (forever)
 import           Control.Parallel.Strategies
-import           Data.AttoLisp
-import qualified Data.Attoparsec.ByteString.Char8 as AC
+import           Data.AttoLisp                    
+import           Data.Maybe                       (fromJust,fromMaybe, catMaybes)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text, unpack, pack)
+import           Language.Haskell.Exts.Parser     (parseModule, ParseResult(..))
+import           Language.Haskell.Exts.Syntax     (Module(..), ExportSpec(..), QName(..), Name, Decl(FunBind, PatBind), Match(Match), Pat(..))
+import           System.IO                        (hFlush, stdout)
+import qualified Data.Attoparsec.ByteString.Char8 as AC 
 import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (fromJust)
-import           Data.Monoid                      ((<>))
-import           Data.Text                        (Text)
 import qualified Data.Text                        as T
-import           System.IO                        (hFlush, stdout)
+import qualified Language.Haskell.Exts.Syntax     as S (Name(Ident, Symbol)) 
 
 class Arity f where
   arity :: f -> Int
@@ -142,16 +146,6 @@ allExports :: [Text] -> (Text, [Text])
 allExports = g . filter (not . null) . map exportsGet
   where g = T.unlines . map head &&& concatMap tail
 
--- | Retrieve list of exported functions in a haskell module.
-exportsGet :: Text -> [Text]
-exportsGet t
-  | length list < 2 = []
-  | otherwise       = (\(x:xs) -> imports x : map ((x <> ".") <>) xs) list
-  where list = filter (not . T.null) . takeWhile (/= "where")
-               . drop 1 . dropWhile (/= "module") $ T.split (`elem` ("\n ,()\t" :: String))
-               . T.unlines . map (fst . T.breakOn "--") $ T.lines t
-        imports = (<>) "import qualified "
-
 -- | List of haskell functions which get querried for their arity.
 arityFormat :: [Text] -> Text
 arityFormat ts = T.intercalate ","
@@ -159,3 +153,39 @@ arityFormat ts = T.intercalate ","
                               <> "arity " <> x <> ")")
                  $ ts
   where padding = maximum [T.length t | t <- ts] + 4
+
+-- | Retrieve list of exported functions in a haskell module.
+exportsGet :: Text -> [Text]
+exportsGet moduleContent =
+  case parseModule (unpack moduleContent) of
+    ParseOk (Module _ _ _ _ Nothing _ decls)    -> exportsFromModuleDecls decls
+    ParseOk (Module _ _ _ _ (Just exspecs) _ _) -> exportsFromHeader exspecs
+    ParseFailed loc msg                         -> error msg
+    
+exportsFromModuleDecls :: [Decl] -> [Text]
+exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames
+
+functionDeclarationNames :: Decl -> Maybe Text
+functionDeclarationNames (FunBind [])                         = Nothing
+functionDeclarationNames (FunBind ((Match _ nm _ _ _ _) : _)) = Just (fromName nm)
+functionDeclarationNames (PatBind _ (PVar nm) _ _)            = Just (fromName nm)
+functionDeclarationNames _                                    = Nothing 
+
+-- Extract the unqalified function names from an ExportSpec  
+exportsFromHeader :: [ExportSpec] -> [Text]
+exportsFromHeader =
+  catMaybes . fmap (fmap fromName  . exportFunction)
+
+fromName :: Name -> Text
+fromName (S.Symbol str) = pack str
+fromName (S.Ident str)  = pack str
+
+exportFunction :: ExportSpec -> Maybe Name
+exportFunction (EVar _ qname)      = unQalifiedName qname
+exportFunction (EModuleContents _) = Nothing
+exportFunction _                   = Nothing
+
+unQalifiedName :: QName -> Maybe Name
+unQalifiedName (Qual _ name) = Just name
+unQalifiedName (UnQual name) = Just name
+unQalifiedName _             = Nothing
