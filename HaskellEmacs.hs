@@ -43,6 +43,7 @@ traverseLisp :: Lisp -> Result Lisp
 traverseLisp l = case l of
   List (Symbol x:xs) -> sym (T.filter (/='\\') x) xs
   List xs            -> list xs
+  Symbol "nil"       -> Success nil
   _                  -> Success l
   where eval     = sequence . parMap rdeepseq traverseLisp
         list     = fmap List . eval
