@@ -36,7 +36,7 @@
 
 ;;; Code:
 
-(defconst haskell-emacs-api-hash
+(defconst haskell-emacs--api-hash
   (with-temp-buffer
     (insert-file-contents load-file-name)
     (insert-file-contents
@@ -226,7 +226,7 @@ modularity and using haskell for even more basic tasks."
         (and (file-exists-p heE)
              (with-temp-buffer
                (insert-file-contents (concat haskell-emacs-dir heF))
-               (and (re-search-forward haskell-emacs-api-hash nil t)
+               (and (re-search-forward haskell-emacs--api-hash nil t)
                     (re-search-forward haskell-emacs--function-hash nil t))))
       (haskell-emacs--compile code))
     (eval start-proc)
@@ -411,7 +411,7 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
     (let* ((heB "*HASKELL-BUFFER*")
            (heF ".HaskellEmacs.hs")
            (code (concat
-                  "-- hash of haskell-emacs: " haskell-emacs-api-hash "\n"
+                  "-- hash of haskell-emacs: " haskell-emacs--api-hash "\n"
                   "-- hash of all functions: " haskell-emacs--function-hash
                   "\n" code))
            (package-db (haskell-emacs--find-package-db))
