@@ -5,7 +5,11 @@
 It provides an FFI (foreign function interface) for haskell functions.
 
 * Examples
-Consider that you've got the following toy program:
+Melpa install =haskell-emacs= (if you're cloning directly the repo,
+you have to add the repo to your =load-path= and =(require
+'haskell-emacs)=) and run =M-x haskell-emacs= .  You'll be asked an
+installation dialog.  If you choose so, you'll receive the following
+demo library:
 
 #+BEGIN_SRC haskell
 -- /home/foo/.emacs.d/haskell-fun/Matrix.hs
@@ -13,37 +17,24 @@ module Matrix (identity,isIdentity,dyadic,transpose) where
 
 import qualified Data.List as L
 
+-- | Takes a matrix (a list of lists of ints) and returns its transposition.
 transpose :: [[Int]] -> [[Int]]
 transpose = L.transpose
 
+-- | Returns an identity matrix of size n.
 identity :: Int -> [[Int]]
 identity n
   | n > 1 = L.nub $ L.permutations $ 1 : replicate (n-1) 0
   | otherwise = [[1]]
 
+-- | Check whether a given matrix is a identity matrix.
 isIdentity :: [[Int]] -> Bool
 isIdentity xs = xs == identity (length xs)
 
+-- | Compute the dyadic product of two vectors.
 dyadic :: [Int] -> [Int] -> [[Int]]
 dyadic xs ys = map (\x -> map (x*) ys) xs
 #+END_SRC
-
-Add the directory of =haskell-emacs= to your emacs load path:
-#+BEGIN_SRC emacs-lisp
-(add-to-list 'load-path "~/git/haskell-emacs/")
-#+END_SRC
-
-Start your emacs and evaluate following expression (and put it in
-your .emacs if you like):
-#+BEGIN_SRC emacs-lisp
-(require 'haskell-emacs)
-(haskell-emacs-init)
-#+END_SRC
-Note that it is not sufficient to evaluate the buffer of the source
-file, it has to know where some haskell glue code is located and uses
-therefore =load-file-name=, so you have to load or require it, and the
-glue code must be in the same directory (which is the case if you
-simply clone the repo).
 
 Now you're set to toy around with your new elisp functions:
 #+BEGIN_SRC emacs-lisp
@@ -146,15 +137,14 @@ which it will obviously not find, so it jumps only to the top of the
 module where the haskell function is defined.
 
 #+BEGIN_SRC emacs-lisp
-; C-h f Org.parseCsv
-Org\.parseCsv is a Lisp macro in `Org.hs'.
+; C-h f Matrix.transpose
+Matrix\.transpose is a Lisp macro in `Matrix.hs'.
 
-(Org\.parseCsv X1)
+(Matrix\.transpose X1)
 
-parseCsv :: T.Text -> T.Text
+transpose :: [[Int]] -> [[Int]]
 
-Parses a string and returns an org-table somewhat
-faster (100x) than the corresponding elisp code.
+Takes a matrix (a list of lists of ints) and returns its transposition.
 #+END_SRC
 
 Unfortunately, emacs doesn't like dots in function names in the help
@@ -162,24 +152,21 @@ buffer.
 * Dependencies
 You'll need:
 - ghc
-- attoparsec
+- cabal
 - atto-lisp
 - parallel
 - utf8-string
 
-Thats all.
-
+Thats all.  If you've got ghc and cabal, the rest will be installed
+automatically if you choose so during the setup dialog.
 * Nixos
 The integration with NixOS is especially handled: compiling gets done
-in a pure =nix-shell= which is customizeable.  You don't need to
-install any dependency, it is taken care of by the =nix-shell=.  If
-you use in your custom functions other packages, you need to write
-these dependencies into the variable =haskell-emacs-nix-shell-args=
-(use customize).  If this isn't convenient for your workflow, you can
-remove the =--pure= flag from the shell.
+in a =nix-shell= which is customizeable.  You can for example add the
+--pure flag and list there all the dependencies.  Obviously, in this
+case a cabal sandbox wouldn't make sense.
 * Shortcomings
-About 10 types are recognized as input, and about 10 types of output
-can be transformed into an elisp type.  Thats quite good, but not
+Some types are recognized as input, and some types of output can be
+transformed into an elisp object.  Thats quite good, but not
 everything.  If you write a function with an unknown type,
 =haskell-emacs-init= will signal an error with the output from ghc.
 
@@ -190,7 +177,15 @@ functions in emacs.
 If a haskell function crashes haskell-emacs an error will be thrown and
 the server process will be restarted immediately.  In this process,
 every async call will be obviously lost.
-
+* Fancy Stuff
+One of the mind bending aspects is that it supports as input and as
+output type lisp expressions.  If you import Data.AttoLisp, you can
+write functons of type Lisp -> Lisp.  The returned Lisp will be
+evaluated (and not only returned) by emacs, so you can use
+haskell-emacs as an macro-engine written in haskell.  It even allows
+you to instruct emacs to do impure things, like moving the point,
+apply an emacs function and call with the result of this function a
+haskell-emacs function...
 * Contribute
 I highly encourage contributions of all sorts.  If you've got anything
 that doesn't behave as you like or doesn't exist and you would like to
