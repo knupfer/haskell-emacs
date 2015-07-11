@@ -258,7 +258,9 @@ modularity and using haskell for even more basic tasks."
                 (puthash id
                          (concat (gethash id table-of-funs)
                                  (format "%S" (haskell-emacs--fun-wrapper
-                                               (read func) (read (pop arity)) (pop docs))))
+                                               (read func)
+                                               (read (pop arity))
+                                               (pop docs))))
                          table-of-funs)))
             (cadr funs))
       (maphash (lambda (key value)
@@ -396,9 +398,9 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
 
 (defun haskell-emacs--find-package-db ()
   "Search for the package dir in a cabal sandbox."
-  (when (file-directory-p (concat haskell-emacs-dir ".cabal-sandbox"))
-    (car (directory-files (concat haskell-emacs-dir ".cabal-sandbox")
-                          t "packages\.conf\.d$"))))
+  (let ((sandbox (concat haskell-emacs-dir ".cabal-sandbox")))
+    (when (file-directory-p sandbox)
+      (car (directory-files sandbox t "packages\.conf\.d$")))))
 
 (defun haskell-emacs--compile (code)
   "Use CODE to compile a new haskell Emacs programm."
