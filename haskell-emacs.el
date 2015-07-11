@@ -35,14 +35,6 @@
 ;; of usage.
 
 ;;; Code:
-
-(defconst haskell-emacs--api-hash
-  (with-temp-buffer
-    (insert-file-contents load-file-name)
-    (insert-file-contents
-     (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
-    (sha1 (buffer-string))))
-
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
   :group 'haskell)
@@ -69,17 +61,23 @@
   :group 'haskell-emacs
   :type 'string)
 
-(defvar haskell-emacs--function-hash nil)
-(defvar haskell-emacs--load-dir (file-name-directory load-file-name))
-(defvar haskell-emacs--response nil)
+(defconst haskell-emacs--api-hash
+  (with-temp-buffer
+    (insert-file-contents load-file-name)
+    (insert-file-contents
+     (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
+    (sha1 (buffer-string))))
 (defvar haskell-emacs--count 0)
-(defvar haskell-emacs--table (make-hash-table))
-(defvar haskell-emacs--proc nil)
+(defvar haskell-emacs--function-hash nil)
 (defvar haskell-emacs--fun-list nil)
-(defvar haskell-emacs--module-list nil)
 (defvar haskell-emacs--is-nixos
   (when (eq system-type 'gnu/linux)
     (string-match " nixos " (shell-command-to-string "uname -a"))))
+(defvar haskell-emacs--load-dir (file-name-directory load-file-name))
+(defvar haskell-emacs--module-list nil)
+(defvar haskell-emacs--proc nil)
+(defvar haskell-emacs--response nil)
+(defvar haskell-emacs--table (make-hash-table))
 
 ;;;###autoload
 (defun haskell-emacs-register-module ()
