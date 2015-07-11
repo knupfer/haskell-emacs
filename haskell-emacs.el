@@ -101,12 +101,14 @@ Example:
   (when haskell-emacs--proc (haskell-emacs-init)))
 
 ;;;###autoload
-(defun haskell-emacs-init ()
+(defun haskell-emacs-init (&optional arg)
   "Initialize haskell FFI or reload it to reflect changed functions.
 
-It will try to wrap all exported functions within
-`haskell-emacs-dir' into an synchronous and an asynchronous elisp
-function.
+When ARG is not nil or `haskell-emacs-init' is called
+interactively and `haskell-emacs-dir' doesn't exist, ask an
+installation dialog.  It will try to wrap all exported functions
+within `haskell-emacs-dir' into an synchronous and an
+asynchronous elisp function.
 
 Dependencies:
  - GHC
@@ -172,10 +174,48 @@ side, this allows executing a chain of functions asynchronously:
 Furthermore, it nullifies the small performance overhead (0.07 ms
 per function call) between fused functions which allows more
 modularity and using haskell for even more basic tasks."
-  (interactive)
-  (unless (file-directory-p haskell-emacs-dir)
-    (mkdir haskell-emacs-dir t))
-  (let* ((funs (apply 'append
+  (interactive "p")
+  (let* ((first-time
+          (unless (file-directory-p haskell-emacs-dir)
+            (mkdir haskell-emacs-dir t)
+            (when arg
+              (let ((sandbox (yes-or-no-p "Create a cabal sandbox? "))
+                    (install (yes-or-no-p "Cabal install the dependencies? "))
+                    (example (yes-or-no-p "Add a simple example? ")))
+                (when sandbox
+                  (with-temp-buffer
+                    (message "Creating sandbox...")
+                    (cd haskell-emacs-dir)
+                    (unless (= 0 (call-process "cabal" nil t nil
+                                               "sandbox"
+                                               "init"))
+                      (error (buffer-string)))))
+                (when install
+                  (with-temp-buffer
+                    (message "Installing dependencies...")
+                    (cd haskell-emacs-dir)
+                    (unless (= 0 (call-process "cabal" nil t nil
+                                               "install"
+                                               "atto-lisp"
+                                               "parallel"
+                                               "utf8-string"))
+                      (error (buffer-string)))))
+                (if example
+                    (with-temp-buffer (insert "
+module Matrix (transpose, dyadic) where
+
+import qualified Data.List as L
+
+transpose :: [[Int]] -> [[Int]]
+transpose = L.transpose
+
+dyadic :: [Int] -> [Int] -> [[Int]]
+dyadic xs ys = map (\\x -> map (x*) ys) xs")
+                                      (write-file (concat haskell-emacs-dir
+                                                          "Matrix.hs"))
+                                      "example")
+                  "no-example")))))
+         (funs (apply 'append
                       (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
                               (apply 'list haskell-emacs-dir
                                      haskell-emacs--module-list))))
@@ -245,8 +285,16 @@ modularity and using haskell for even more basic tasks."
                    (let ((buffer-file-name (concat haskell-emacs-dir key ".hs")))
                      (insert value)
                      (eval-buffer))))
-               table-of-funs)))
-  (message "Finished compiling."))
+               table-of-funs))
+    (if (equal first-time "example")
+        (message
+         "Now you can run the examples from C-h f haskell-emacs-init.
+For example (Matrix.transpose '((1 2 3) (4 5 6)))")
+      (if (equal first-time "no-example")
+          (message
+           "Now you can populate your `haskell-emacs-dir' with haskell modules.
+Read C-h f haskell-emacs-init for more instructions")
+        (message "Finished compiling haskell-emacs.")))))
 
 (defun haskell-emacs--filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
