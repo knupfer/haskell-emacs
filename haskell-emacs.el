@@ -191,58 +191,9 @@ Furthermore, it nullifies the small performance overhead (0.07 ms
 per function call) between fused functions which allows more
 modularity and using haskell for even more basic tasks."
   (interactive "p")
-  (let* ((first-time
-          (unless (file-directory-p haskell-emacs-dir)
-            (mkdir haskell-emacs-dir t)
-            (when arg
-              (let ((sandbox (yes-or-no-p "Create a cabal sandbox? "))
-                    (install (yes-or-no-p "Cabal install the dependencies? "))
-                    (example (yes-or-no-p "Add a simple example? ")))
-                (when sandbox
-                  (with-temp-buffer
-                    (message "Creating sandbox...")
-                    (cd haskell-emacs-dir)
-                    (unless (= 0 (call-process "cabal" nil t nil
-                                               "sandbox"
-                                               "init"))
-                      (error (buffer-string)))))
-                (when install
-                  (with-temp-buffer
-                    (message "Installing dependencies...")
-                    (cd haskell-emacs-dir)
-                    (unless (= 0 (call-process "cabal" nil t nil
-                                               "install"
-                                               "atto-lisp"
-                                               "parallel"
-                                               "utf8-string"))
-                      (error (buffer-string)))))
-                (if example
-                    (with-temp-buffer (insert "
-module Matrix (identity,isIdentity,dyadic,transpose) where
-
-import qualified Data.List as L
-
--- | Takes a matrix (a list of lists of ints) and returns its transposition.
-transpose :: [[Int]] -> [[Int]]
-transpose = L.transpose
-
--- | Returns an identity matrix of size n.
-identity :: Int -> [[Int]]
-identity n
-  | n > 1 = L.nub $ L.permutations $ 1 : replicate (n-1) 0
-  | otherwise = [[1]]
-
--- | Check whether a given matrix is a identity matrix.
-isIdentity :: [[Int]] -> Bool
-isIdentity xs = xs == identity (length xs)
-
--- | Compute the dyadic product of two vectors.
-dyadic :: [Int] -> [Int] -> [[Int]]
-dyadic xs ys = map (\\x -> map (x*) ys) xs")
-                                      (write-file (concat haskell-emacs-dir
-                                                          "Matrix.hs"))
-                                      "example")
-                  "no-example")))))
+  (let* ((first-time (unless (file-directory-p haskell-emacs-dir)
+                       (mkdir haskell-emacs-dir t)
+                       (when arg (haskell-emacs--install-dialog))))
          (funs (apply 'append
                       (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
                               (apply 'list haskell-emacs-dir
@@ -377,6 +328,57 @@ Read C-h f haskell-emacs-init for more instructions")
                              (haskell-emacs--optimize-ast
                               ',(cons ',fun (list ,@args)))))
                     (list 'haskell-emacs--get haskell-emacs--count)))))
+
+(defun haskell-emacs--install-dialog ()
+  "Run the installation dialog."
+  (let ((sandbox (yes-or-no-p "Create a cabal sandbox? "))
+        (install (yes-or-no-p "Cabal install the dependencies? "))
+        (example (yes-or-no-p "Add a simple example? ")))
+    (when sandbox
+      (with-temp-buffer
+        (message "Creating sandbox...")
+        (cd haskell-emacs-dir)
+        (unless (= 0 (call-process "cabal" nil t nil
+                                   "sandbox"
+                                   "init"))
+          (error (buffer-string)))))
+    (when install
+      (with-temp-buffer
+        (message "Installing dependencies...")
+        (cd haskell-emacs-dir)
+        (unless (= 0 (call-process "cabal" nil t nil
+                                   "install"
+                                   "atto-lisp"
+                                   "parallel"
+                                   "utf8-string"))
+          (error (buffer-string)))))
+    (if example
+        (with-temp-buffer
+          (insert "
+module Matrix (identity,isIdentity,dyadic,transpose) where
+
+import qualified Data.List as L
+
+-- | Takes a matrix (a list of lists of ints) and returns its transposition.
+transpose :: [[Int]] -> [[Int]]
+transpose = L.transpose
+
+-- | Returns an identity matrix of size n.
+identity :: Int -> [[Int]]
+identity n
+  | n > 1 = L.nub $ L.permutations $ 1 : replicate (n-1) 0
+  | otherwise = [[1]]
+
+-- | Check whether a given matrix is a identity matrix.
+isIdentity :: [[Int]] -> Bool
+isIdentity xs = xs == identity (length xs)
+
+-- | Compute the dyadic product of two vectors.
+dyadic :: [Int] -> [Int] -> [[Int]]
+dyadic xs ys = map (\\x -> map (x*) ys) xs")
+          (write-file (concat haskell-emacs-dir "Matrix.hs"))
+                          "example")
+      "no-example")))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
