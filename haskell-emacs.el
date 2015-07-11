@@ -41,7 +41,7 @@
     (insert-file-contents load-file-name)
     (insert-file-contents
      (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
-    (md5 (buffer-string))))
+    (sha1 (buffer-string))))
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
@@ -69,6 +69,7 @@
   :group 'haskell-emacs
   :type 'string)
 
+(defvar haskell-emacs--function-hash nil)
 (defvar haskell-emacs--load-dir (file-name-directory load-file-name))
 (defvar haskell-emacs--response nil)
 (defvar haskell-emacs--count 0)
@@ -218,14 +219,15 @@ modularity and using haskell for even more basic tasks."
                                             'haskell-emacs--filter))))
     (eval stop-proc)
     (setq haskell-emacs--response nil)
+    (setq haskell-emacs--function-hash
+          (with-temp-buffer (mapc 'insert-file-contents funs)
+                            (sha1 (buffer-string))))
     (unless
         (and (file-exists-p heE)
              (with-temp-buffer
                (insert-file-contents (concat haskell-emacs-dir heF))
-               (re-search-forward
-                (concat "-- " haskell-emacs-api-hash "\n"
-                        "-- " (md5 (apply 'concat haskell-emacs--module-list)))
-                nil t)))
+               (and (re-search-forward haskell-emacs-api-hash nil t)
+                    (re-search-forward haskell-emacs--function-hash nil t))))
       (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
@@ -404,17 +406,17 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
     (set-process-sentinel haskell-emacs--proc nil)
     (delete-process haskell-emacs--proc))
   (with-temp-buffer
-    (let ((heB "*HASKELL-BUFFER*")
-          (heF ".HaskellEmacs.hs")
-          (code (concat "-- " haskell-emacs-api-hash "\n"
-                        "-- " (md5 (apply 'concat haskell-emacs--module-list))
-                        "\n" code))
-          (haskell-emacs-ghc-flags
-           (if (haskell-emacs--find-package-db)
-               (cons (concat "-package-db="
-                             (haskell-emacs--find-package-db))
-                     haskell-emacs-ghc-flags)
-             haskell-emacs-ghc-flags)))
+    (let* ((heB "*HASKELL-BUFFER*")
+           (heF ".HaskellEmacs.hs")
+           (code (concat
+                  "-- hash of haskell-emacs: " haskell-emacs-api-hash "\n"
+                  "-- hash of all functions: " haskell-emacs--function-hash
+                  "\n" code))
+           (package-db (haskell-emacs--find-package-db))
+           (haskell-emacs-ghc-flags
+            (if package-db
+                (cons (concat "-package-db=" package-db) haskell-emacs-ghc-flags)
+              haskell-emacs-ghc-flags)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
