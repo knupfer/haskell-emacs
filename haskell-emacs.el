@@ -314,6 +314,12 @@ modularity and using haskell for even more basic tasks."
         (eval res)
       res)))
 
+(defun haskell-emacs--find-package-db ()
+  "Search for the package dir in a cabal sandbox."
+  (when (file-directory-p (concat haskell-emacs-dir ".cabal-sandbox"))
+    (car (directory-files (concat haskell-emacs-dir ".cabal-sandbox")
+                          t "packages\.conf\.d$"))))
+
 (defun haskell-emacs--compile (code)
   "Use CODE to compile a new haskell Emacs programm."
   (when haskell-emacs--proc
@@ -324,7 +330,13 @@ modularity and using haskell for even more basic tasks."
           (heF ".HaskellEmacs.hs")
           (code (concat "-- " haskell-emacs-api-hash "\n"
                         "-- " (md5 (apply 'concat haskell-emacs--module-list))
-                        "\n" code)))
+                        "\n" code))
+          (haskell-emacs-ghc-flags
+           (if (haskell-emacs--find-package-db)
+               (cons (concat "-package-db="
+                             (haskell-emacs--find-package-db))
+                     haskell-emacs-ghc-flags)
+             haskell-emacs-ghc-flags)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
@@ -341,7 +353,7 @@ modularity and using haskell for even more basic tasks."
                                          (mapcar (lambda (x) (concat ":" x))
                                                  haskell-emacs--module-list)) 1))
                                       haskell-emacs-ghc-flags)
-                               haskell-emacs-ghc-flags))))
+                              haskell-emacs-ghc-flags))))
         (if (eql 0 (apply 'call-process (if haskell-emacs--is-nixos "nix-shell"
                                           haskell-emacs-ghc-executable)
                           nil heB nil
