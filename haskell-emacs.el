@@ -420,31 +420,7 @@ Read C-h f haskell-emacs-init for more instructions")
         (insert code)
         (write-file heF))
       (message "Compiling ...")
-      (let ((args (cons heF (if haskell-emacs--module-list
-                                (cons (concat
-                                       "-i"
-                                       (substring
-                                        (apply
-                                         'concat
-                                         (mapcar (lambda (x) (concat ":" x))
-                                                 haskell-emacs--module-list)) 1))
-                                      haskell-emacs-ghc-flags)
-                              haskell-emacs-ghc-flags))))
-        (if (eql 0 (apply 'call-process (if haskell-emacs--is-nixos "nix-shell"
-                                          haskell-emacs-ghc-executable)
-                          nil heB nil
-                          (if haskell-emacs--is-nixos
-                              (append haskell-emacs-nix-shell-args
-                                      (list
-                                       "--command"
-                                       (apply 'concat haskell-emacs-ghc-executable
-                                              (mapcar (lambda (x) (concat " " x))
-                                                      args))))
-                            args)))
-            (kill-buffer heB)
-          (let ((bug (with-current-buffer heB (buffer-string))))
-            (kill-buffer heB)
-            (error bug))))))
+      (haskell-emacs--compile-command heF heB)))
   (setq haskell-emacs--proc
         (start-process "hask" nil
                        (concat haskell-emacs-dir ".HaskellEmacs"
@@ -455,6 +431,34 @@ Read C-h f haskell-emacs-init for more instructions")
                         (lambda (proc sign)
                           (let ((debug-on-error t))
                             (error "Haskell-emacs crashed")))))
+
+(defun haskell-emacs--compile-command (heF heB)
+  "Run the compilation for file HEF with buffer HEB."
+  (let ((args (cons heF (if haskell-emacs--module-list
+                            (cons (concat
+                                   "-i"
+                                   (substring
+                                    (apply
+                                     'concat
+                                     (mapcar (lambda (x) (concat ":" x))
+                                             haskell-emacs--module-list)) 1))
+                                  haskell-emacs-ghc-flags)
+                          haskell-emacs-ghc-flags))))
+    (if (eql 0 (apply 'call-process (if haskell-emacs--is-nixos "nix-shell"
+                                      haskell-emacs-ghc-executable)
+                      nil heB nil
+                      (if haskell-emacs--is-nixos
+                          (append haskell-emacs-nix-shell-args
+                                  (list
+                                   "--command"
+                                   (apply 'concat haskell-emacs-ghc-executable
+                                          (mapcar (lambda (x) (concat " " x))
+                                                  args))))
+                        args)))
+        (kill-buffer heB)
+      (let ((bug (with-current-buffer heB (buffer-string))))
+        (kill-buffer heB)
+        (error bug)))))
 
 (provide 'haskell-emacs)
 
