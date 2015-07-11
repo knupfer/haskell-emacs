@@ -38,7 +38,7 @@ main = do printer <- newChan
                 =<< fullParse <$> B.getContents
 
 -- | Recursively evaluate a lisp in parallel, using functions defined
--- by the user (see documentation of the emacs function `haskell-init').
+-- by the user (see documentation of the emacs function `haskell-emacs-init').
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp l = case l of
   List (Symbol x:xs) -> sym (T.filter (/='\\') x) xs
