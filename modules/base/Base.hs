@@ -1,31 +1,22 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Base ( even
-            , odd
-            , rem
-            , or
-            , exponent
-            , properFraction
-            , and
-            , cos
-            , cosh
-            , exp
-            , floor
-            , product
-            , recip
-            , round
-            , div
-            , divMod
-            , quot
-            , quotRem
-            , abs
+module Base ( abs
             , acos
             , acosh
+            , and
             , asin
             , asinh
             , atan
             , atan2
             , atanh
             , ceiling
+            , cos
+            , cosh
+            , div
+            , divMod
+            , even
+            , exp
+            , exponent
+            , floor
             , gcd
             , lcm
             , lines
@@ -34,6 +25,15 @@ module Base ( even
             , mod
             , negate
             , not
+            , odd
+            , or
+            , product
+            , properFraction
+            , quot
+            , quotRem
+            , recip
+            , rem
+            , round
             , significand
             , signum
             , sin
