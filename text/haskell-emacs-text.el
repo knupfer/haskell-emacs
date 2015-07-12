@@ -9,8 +9,6 @@
 
 ;;; Code:
 
-(require 'haskell-emacs)
-;;;###autoload(haskell-emacs-register-module)
-(provide 'haskell-emacs-text)
+;;;###autoload (haskell-emacs-register-module)
 
 ;;; haskell-emacs-text.el ends here
