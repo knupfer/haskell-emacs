@@ -1,7 +1,11 @@
 ;;; haskell-emacs-text.el --- foo it!
 
+;; Dependencies: haskell-emacs
+
 ;;; Commentary:
 ;; o.
+
+
 
 ;;; Code:
 
