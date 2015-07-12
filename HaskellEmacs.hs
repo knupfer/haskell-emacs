@@ -14,7 +14,7 @@ import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (fromJust,fromMaybe)
+import           Data.Maybe                       (fromJust)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
@@ -95,7 +95,8 @@ dispatcher = M.fromList $
   , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
   , ("getDocumentation", transform $ uncurry getDocumentation)
-  ] ++ [{--<<export>>--}]
+  ] ++
+  [ {--<<export>>--} ]
 
 -- | Transform a curried function to a function which receives and
 -- returns lisp forms.
@@ -111,25 +112,30 @@ normalize a               = List [a]
 -- | Takes tuples of function names and their arities and returns
 -- haskell source code which gets spliced back into a module.
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
-toDispatcher = T.intercalate "," . map fun &&& map (pars . args . snd)
+toDispatcher fs = T.intercalate "," . map fun &&& map (pars . args . snd) $ fs
   where args n    = T.unwords [T.pack $ 'x' : show x | x <- [1..n]]
         pars x    = "(" <> x <> ")"
-        fun (t,n) = pars . wrap . T.unwords $ case n of
-          0 -> ["(const :: a -> Lisp -> a)", t]
-          1 -> [t]
+        fun (t,1) = wrap t t
+        fun (t,n) = wrap t . T.unwords . ("$" :) $ case n of
+          0 -> [pars "const :: a -> Lisp -> a", t]
+          2 -> ["uncurry", t]
           _ -> ["\\", pars . T.replace " " "," $ args n, "->", t, args n]
-          where wrap ts = "\"" <> t <> "\",transform" <> pars ts
+        wrap t ts = pars $ T.justifyLeft padding ' ' ("\"" <> t <> "\",")
+                    <> "transform " <> ts
+        padding = maximum [T.length f | (f,_) <- fs] + 4
 
 -- | List of functions and their arities (filled by emacs).
 arityList :: [(Text, Int)]
-arityList = [{--<<arity>>--}]
+arityList =
+  [ {--<<arity>>--} ]
 
 -- | Splice user functions into the haskell module.
 formatCode :: (Text, Text, Text) -> Text -> Text
-formatCode (imports, exports, arities) = inject "arity"  arities
-                                       . inject "export" exports
+formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
+                                       . inject "export" (pretty exports)
                                        . inject "import" imports
   where inject s = T.replace ("{--<<" <> s <> ">>--}")
+        pretty = T.replace "),(" ")\n  , ("
 
 -- | Import statement of all modules and all their functions.
 allExports :: [Text] -> (Text, [Text])
@@ -148,5 +154,8 @@ exportsGet t
 
 -- | List of haskell functions which get querried for their arity.
 arityFormat :: [Text] -> Text
-arityFormat = T.intercalate ","
-              . map (\x -> "(\"" <> x <> "\",arity " <> x <> ")")
+arityFormat ts = T.intercalate ","
+                 . map (\x -> "(" <> T.justifyLeft padding ' ' ("\"" <> x <> "\",")
+                              <> "arity " <> x <> ")")
+                 $ ts
+  where padding = maximum [T.length t | t <- ts] + 4
