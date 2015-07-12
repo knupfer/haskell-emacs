@@ -1,6 +1,6 @@
 ;;; haskell-emacs-text.el --- foo it!
 
-;; Dependencies: haskell-emacs
+;; Package-Requires: ((haskell-emacs))
 
 ;;; Commentary:
 ;; o.
