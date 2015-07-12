@@ -7,9 +7,9 @@ It provides an FFI (foreign function interface) for haskell functions.
 * Examples
 Melpa install =haskell-emacs= (if you're cloning directly the repo,
 you have to add the repo to your =load-path= and =(require
-'haskell-emacs)=) and run =M-x haskell-emacs= .  You'll be asked an
-installation dialog.  If you choose so, you'll receive the following
-demo library:
+'haskell-emacs)=) and run =M-x haskell-emacs-init=.  You'll be asked
+an installation dialog.  If you choose so, you'll receive the
+following demo library:
 
 #+BEGIN_SRC haskell
 -- /home/foo/.emacs.d/haskell-fun/Matrix.hs
