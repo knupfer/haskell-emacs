@@ -74,7 +74,7 @@
   (when (eq system-type 'gnu/linux)
     (string-match " nixos " (shell-command-to-string "uname -a"))))
 (defvar haskell-emacs--load-dir (file-name-directory load-file-name))
-(defvar haskell-emacs--module-list nil)
+;;;###autoload (defvar haskell-emacs--module-list nil)
 (defvar haskell-emacs--proc nil)
 (defvar haskell-emacs--response nil)
 (defvar haskell-emacs--table (make-hash-table))
