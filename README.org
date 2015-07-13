@@ -260,6 +260,9 @@ haskell-emacs as an macro-engine written in haskell.  It even allows
 you to instruct emacs to do impure things, like moving the point,
 apply an emacs function and call with the result of this function a
 haskell-emacs function...
+
+You can only register pure functions to haskell-emacs, but you can --
+if you dare -- use unsafePerformIO and you can use the haskell ffi.
 * Contribute
 I highly encourage contributions of all sorts.  If you've got anything
 that doesn't behave as you like or doesn't exist and you would like to
