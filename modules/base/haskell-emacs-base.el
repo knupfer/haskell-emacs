@@ -17,9 +17,9 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
-;; email: fknupfer@gmail.com
+;; Package-Requires: ((haskell-emacs "2.3.0"))
+;; Email: fknupfer@gmail.com
 ;; Keywords: haskell, emacs, ffi
-;; Package-Requires: ((haskell-emacs))
 ;; URL: https://github.com/knupfer/haskell-emacs/modules/base
 
 ;;; Commentary:
@@ -42,7 +42,9 @@
 ;; See documentation for `haskell-emacs-init' for more info.
 
 ;;; Code:
+
 (require 'haskell-emacs)
 (haskell-emacs-register-module)
 (provide 'haskell-emacs-base)
+
 ;;; haskell-emacs-base.el ends here
