@@ -220,7 +220,7 @@ corresponding haskell file in the same dir:
 #+BEGIN_SRC haskell
 ---- haskell-emacs-pi/Pi.hs
 
-module Pi where (piSquare)
+module Pi (piSquare) where
 
 piSquare :: Double
 piSquare = pi^2
