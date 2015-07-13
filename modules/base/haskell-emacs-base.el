@@ -1,4 +1,4 @@
-;;; haskell-emacs-base.el --- Provide haskell functions from the standard prelude
+;;; haskell-emacs-base.el --- Haskell functions from Prelude
 
 ;; Copyright (C) 2014-2015 Florian Knupfer
 
