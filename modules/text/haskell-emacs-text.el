@@ -17,7 +17,7 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
-;; Package-Requires: ((haskell-emacs "2.3.0"))
+;; Package-Requires: ((haskell-emacs "2.4.0"))
 ;; Email: fknupfer@gmail.com
 ;; Keywords: haskell, emacs, ffi
 ;; URL: https://github.com/knupfer/haskell-emacs/modules/text
@@ -27,7 +27,8 @@
 ;; haskell-emacs-text.el provides nearly all haskell functions from
 ;; Data.Text.  It uses `haskell-emacs' to register these functions.
 
-;; Run (require 'haskell-emacs-text) or put it into your .emacs.
+;; If you haven't installed this package via melpa, then add the path
+;; to this package to your `load-path' (for example in your .emacs).
 ;; Afterwards run M-x haskell-emacs-init.
 
 ;; (Text.tails "EMACS")
@@ -44,7 +45,6 @@
 ;;; Code:
 
 (require 'haskell-emacs)
-(haskell-emacs-register-module)
 (provide 'haskell-emacs-text)
 
 ;;; haskell-emacs-text.el ends here
