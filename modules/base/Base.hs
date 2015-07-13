@@ -128,11 +128,11 @@ asinh :: Double -> Double
 asinh = P.asinh
 
 asTypeOf :: Lisp -> Lisp -> Lisp
-asTypeOf a@(Symbol _) (Symbol _) = a
-asTypeOf a@(String _) (String _) = a
-asTypeOf a@(Number _) (Number _) = a
-asTypeOf a@(List _)   (List _) = a
-asTypeOf a@(DotList _ _)   (DotList _ _) = a
+asTypeOf a@(Symbol _ ) (Symbol _ ) = a
+asTypeOf a@(String _ ) (String _ ) = a
+asTypeOf a@(Number _ ) (Number _ ) = a
+asTypeOf a@(List   _ ) (List   _ ) = a
+asTypeOf a@(DotList{}) (DotList{}) = a
 asTypeOf _ _ = List [Symbol "error", String "Arguments don't have the same type."]
 
 atan :: Double -> Double
@@ -277,7 +277,7 @@ lookup :: Lisp -> [(Lisp, Lisp)] -> Maybe Lisp
 lookup = P.lookup
 
 mappend :: [Lisp] -> [Lisp] -> [Lisp]
-mappend = P.mappend
+mappend = (P.++)
 
 max :: Lisp -> Lisp -> Lisp
 max = P.max
