@@ -79,25 +79,15 @@
 (defvar haskell-emacs--response nil)
 (defvar haskell-emacs--table (make-hash-table))
 
-;;;###autoload
-(defun haskell-emacs-register-module ()
-  "Register an external module.
-
- If you want to distribute a haskell library for haskell-emacs
- you'll have to write a elisp file which requires haskell-emacs
- and registers your module which resides in the same directory.
-
-Example:
-
-  ;;; haskell-emacs-foo.el --- foo it!
-
-  ;;; Code:
-  (require 'haskell-emacs)
-  (haskell-emacs-register-module)
-  (provide 'haskell-emacs-foo)
-  ;;; haskell-emacs-foo.el ends here"
-  (add-to-list 'haskell-emacs--module-list (file-name-directory load-file-name))
-  (when haskell-emacs--proc (haskell-emacs-init)))
+(defun haskell-emacs--search-modules ()
+  "Search haskell-emacs modules in the `load-path'."
+  (let ((modules))
+    (mapc (lambda (x)
+            (when (file-directory-p x)
+              (mapc (lambda (y) (add-to-list 'modules (file-name-directory y)))
+                    (directory-files x t "^haskell-emacs-.*\.el"))))
+            load-path)
+    modules))
 
 ;;;###autoload
 (defun haskell-emacs-init (&optional arg)
@@ -188,8 +178,60 @@ side, this allows executing a chain of functions asynchronously:
 
 Furthermore, it nullifies the small performance overhead (0.07 ms
 per function call) between fused functions which allows more
-modularity and using haskell for even more basic tasks."
+modularity and using haskell for even more basic tasks.
+
+If you want to distribute a haskell library for haskell-emacs,
+just write an elisp file describing the package and the
+corresponding haskell file in the same dir:
+
+  ;;;; haskell-emacs-pi/haskell-emacs-pi.el
+
+  ;;; haskell-emacs-pi.el --- return pi
+
+  ;; Version: 1.0.0
+  ;; Package-Requires: ((haskell-emacs \"2.4.0\"))
+
+  ;;; Code:
+
+  (require 'haskell-emacs)
+  (provide 'haskell-emacs-pi)
+
+  ;;; haskell-emacs-pi.el ends here
+
+
+  ---- haskell-emacs-pi/Pi.hs
+
+  module Pi where (piSquare)
+
+  piSquare :: Double
+  piSquare = pi^2
+
+  ----
+
+That's all.  You can distribute this package for example via
+melpa (don't forget to add the *.hs to the files of the recipe)
+or just point your `load-path' to this directory.  If you call
+afterwards `haskell-emacs-init', it will automatically find this
+module and provide the functions.
+
+If you want to use such functions in your elisp library, do the following:
+
+  ;;; my-nums.el --- add a number to the square of pi
+
+  ;; Package-Requires: ((haskell-emacs-pi \"1.0.0\"))
+
+  ;;; Code:
+
+  (require 'haskell-emacs-pi)
+  (eval-when-compile (haskell-emacs-init))
+
+  ;;;### autoload
+  (defun my-nums (arg)
+    (+ arg (Pi.piSquare)))
+
+  ;;; my-nums.el ends here."
   (interactive "p")
+  (setq haskell-emacs--module-list (haskell-emacs--search-modules))
   (let* ((first-time (unless (file-directory-p haskell-emacs-dir)
                        (mkdir haskell-emacs-dir t)
                        (when arg (haskell-emacs--install-dialog))))
