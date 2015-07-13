@@ -1,4 +1,4 @@
-;;; haskell-emacs.el --- write emacs extensions in haskell
+;;; haskell-emacs.el --- Write emacs extensions in haskell
 
 ;; Copyright (C) 2014-2015 Florian Knupfer
 
@@ -17,7 +17,7 @@
 ;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 ;; Author: Florian Knupfer
-;; email: fknupfer@gmail.com
+;; Email: fknupfer@gmail.com
 ;; Keywords: haskell, emacs, ffi
 ;; URL: https://github.com/knupfer/haskell-emacs
 
