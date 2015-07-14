@@ -149,9 +149,9 @@ ceiling = P.ceiling
 
 compare :: Lisp -> Lisp -> Lisp
 compare a b = case P.compare a b of
-                   P.LT -> Symbol "<"
-                   P.EQ -> Symbol "="
-                   P.GT -> Symbol ">"
+                   P.LT -> Symbol "LT"
+                   P.EQ -> Symbol "EQ"
+                   P.GT -> Symbol "GT"
 
 concat :: [[Lisp]] -> [Lisp]
 concat = P.concat
