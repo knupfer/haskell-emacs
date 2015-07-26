@@ -161,17 +161,17 @@ exportsGet moduleContent =
     ParseOk (Module _ _ _ _ Nothing _ decls)    -> exportsFromModuleDecls decls
     ParseOk (Module _ _ _ _ (Just exspecs) _ _) -> exportsFromHeader exspecs
     ParseFailed loc msg                         -> error msg
-    
+
 exportsFromModuleDecls :: [Decl] -> [Text]
 exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames
 
 functionDeclarationNames :: Decl -> Maybe Text
 functionDeclarationNames (FunBind [])                         = Nothing
-functionDeclarationNames (FunBind ((Match _ nm _ _ _ _) : _)) = Just (fromName nm)
+functionDeclarationNames (FunBind (Match _ nm _ _ _ _ : _)) = Just (fromName nm)
 functionDeclarationNames (PatBind _ (PVar nm) _ _)            = Just (fromName nm)
-functionDeclarationNames _                                    = Nothing 
+functionDeclarationNames _                                    = Nothing
 
--- Extract the unqalified function names from an ExportSpec  
+-- Extract the unqalified function names from an ExportSpec
 exportsFromHeader :: [ExportSpec] -> [Text]
 exportsFromHeader =
   catMaybes . fmap (fmap fromName  . exportFunction)
