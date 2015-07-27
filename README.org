@@ -1,15 +1,16 @@
 [[http://melpa.org/#/haskell-emacs][file:http://melpa.org/packages/haskell-emacs-badge.svg]]
 
 * What is it?
-=haskell-emacs= is a library which allows extending emacs in haskell.
-It provides an FFI (foreign function interface) for haskell functions.
+=haskell-emacs= is a library which allows the extension of Emacs using
+Haskell.  It provides an FFI (Foreign Function Interface) for Haskell
+functions.
 
 * Examples
-Melpa install =haskell-emacs= (if you're cloning directly the repo,
-you have to add the repo to your =load-path= and =(require
-'haskell-emacs)=) and run =M-x haskell-emacs-init=.  You'll be asked
-an installation dialog.  If you choose so, you'll receive the
-following demo library:
+Melpa install =haskell-emacs= (if you choose to clone the repo
+directly, then you have to add the repo to your =load-path=, =(require
+'haskell-emacs)=), and then run =M-x haskell-emacs-init=.  After that,
+you'll prompted to enter installation options.  If you so choose,
+=haskell-emacs= will create the following demo library:
 
 #+BEGIN_SRC haskell
 -- /home/foo/.emacs.d/haskell-fun/Matrix.hs
@@ -63,14 +64,15 @@ Now consider some bad input:
   => Debugger entered--Lisp error: (error "when expecting a pair, encountered symbol instead")
 #+END_SRC
 
-You see that type errors get errors in emacs with good descriptions of
-the error.  It puts only an error, if the parser doesn't find a
-transformation of your proposed input to the required type of the
-haskell function.  Arrays will be translated (recursively) to Lists,
-and Lists can represent Lists or Tuples.
+You see that type errors result in emacs errors with good descriptions
+therein. It is an error to pass a value to a Haskell function for
+which haskell-emacs cannot marshal to the correct type. Please keep in
+mind that Emacs Lisp Arrays will be translated (recursively) to
+Haskell Lists and Emacs Lisp Lists will be marshaled to either Haskell
+Lists or Haskell Tuples.
 
 * Performance
-There is a (very) small overhead calling haskell functions, so for very
+There is a (very) small overhead calling Haskell functions, so for very
 trivial situations, elisp functions will be faster.  On my laptop
 (i5-4210, 2.7Ghz) it costs the following:
 - 0.07 ms per function call
@@ -80,10 +82,10 @@ Unless you use haskell functions on megabytes of text or in very tight
 loops (which wouldn't be wise, transfer the whole task to haskell) the
 overhead is irrelevant.
 
-Additionally, if you watch close, haskell functions will recursively
-fuse with any of its arguments which are haskell functions so you can
-define quite modular haskell functions and combine them on the lisp
-side and pay *only one time* the overhead.
+Additionally, if you watch closely, Haskell functions will recursively
+fuse with any of its arguments which are Haskell functions so you can
+define Haskell functions that are quite modular and combine them on
+the lisp side and pay the overhead cost *only one time*.
 
 #+BEGIN_SRC emacs-lisp
   (Matrix.transpose (Matrix.transpose '((1 2) (3 4))))
@@ -100,20 +102,20 @@ side and pay *only one time* the overhead.
      => ((1 2) (3 4))
 #+END_SRC
 
-In the upper example, the first and the third one is twice as fast as
-the second one.  In the second case, the identity function does
-nothing, but prevents the haskell functions to fuse.  The result is
-the same, but the intermediate result must be send over pipes back to
-emacs and from emacs back to haskell.  Obviously, fusioning synchronous
-functions gives only (huge) performance benefits for functions, where
-the overhead is the performance bottleneck.
+In example above, the first and the third call are twice as fast as
+the second.  In the second case, the identity function does nothing
+but prevent fusion of the Haskell functions.  The result is the same,
+but the intermediate result must be send over pipes back to emacs and
+from emacs back to Haskell.  Obviously, fusing synchronous functions
+gives (huge) performance benefit, where the overhead is the
+performance bottleneck.
 
-The third case is an async function (which can fuse as well) which
-returns a future without blocking emacs.  Evaluating the future will
-return the result of the computation, or block and wait if it isn't
-already present.  Especially for async functions, the ability to fuse
-is quite powerful:  You can glue together for example 4 costly
-computations which will execute all on the haskell side without
+The third case is an async function (which can fuse as well)
+which returns a future without blocking Emacs.  Evaluating the future
+will return the result of the computation, or block and wait if it
+isn't already present.  The ability to fuse is quite powerful,
+especially for async functions: You can glue together for example 4
+costly computations which will execute all on the Haskell side without
 the need to manually block for intermediate results.
 
 Considering big intermediate results (lets say an entire buffer), it's
@@ -122,19 +124,19 @@ omitting the performance costs per char.
 
 Every branch of a fused function will be evaluated in parallel on
 multiple cores, so if you call a function asynchronously which takes
-as arguments three haskell functions, your call will be evaluated on
-up to three cores in parallel and without blocking emacs.
+as arguments three Haskell functions, your call will be evaluated on
+up to three cores in parallel and without blocking Emacs.
 
 * Documentation
-Document your haskell functions!  The haddock strings will be parsed
-and put as the documentation for the elisp wrappers, so they are
-anytime available.  In any case, the emacs docs (C-h f) will show the
-arity and the type of the haskell functions.  Furthermore, it will
-indicate where the haskell function is defined and you can jump
-directly to that file, just as with elisp functions.  Thanks to an
-hack, emacs actually thinks that there resides an elisp function,
-which it will obviously not find, so it jumps only to the top of the
-module where the haskell function is defined.
+Document your Haskell functions!  The Haddock strings will be parsed
+and used as the documentation for the Emacs Lisp wrappers, so they are
+from Emacs at all times.  In any case, the Emacs docs (C-h f) will
+show the arity and the type of Haskell functions.  Furthermore, it
+will indicate where the Haskell function is defined and you can jump
+directly to that file, just as with elisp functions.  Thanks to a
+hack, Emacs actually thinks that they reside in an elisp function, which
+they obviously do not, so Emacs jumps to the top of the module where the
+Haskell function is defined.
 
 #+BEGIN_SRC emacs-lisp
 ; C-h f Matrix.transpose
@@ -147,7 +149,7 @@ transpose :: [[Int]] -> [[Int]]
 Takes a matrix (a list of lists of ints) and returns its transposition.
 #+END_SRC
 
-Unfortunately, emacs doesn't like dots in function names in the help
+Unfortunately, Emacs doesn't like dots in function names in the help
 buffer.
 * Dependencies
 You'll need:
@@ -160,15 +162,14 @@ You'll need:
 Thats all.  If you've got ghc and cabal, the rest will be installed
 automatically if you choose so during the setup dialog.
 * Nixos
-The integration with NixOS is especially handled: compiling gets done
-in a =nix-shell= which is customizeable.  You can for example add the
---pure flag and list there all the dependencies.  Obviously, in this
-case a cabal sandbox wouldn't make sense.
+The integration with NixOS is handled by compiling in a =nix-shell=
+which is customizeable.  You can for example add the --pure flag and
+list all the dependencies.  Obviously, in this case, a cabal sandbox
+wouldn't make sense.
 * Shortcomings
-Some types are recognized as input, and some types of output can be
-transformed into an elisp object.  Thats quite good, but not
-everything.  If you write a function with an unknown type,
-=haskell-emacs-init= will signal an error with the output from ghc.
+Not all types marshal across languages, If you write a function with
+an unknown type, =haskell-emacs-init= will signal an error with the
+output from GHC.
 
 Higher functions aren't supported at all, you can't pass functions as
 arguments to haskell functions in emacs.
@@ -262,8 +263,8 @@ apply an emacs function and call with the result of this function a
 haskell-emacs function...
 
 You can only register pure functions to haskell-emacs, but you can --
-if you dare -- use unsafePerformIO and you can use the haskell ffi.
+if you dare -- use unsafePerformIO and you can use the Haskell FFI.
 * Contribute
-I highly encourage contributions of all sorts.  If you've got anything
-that doesn't behave as you like or doesn't exist and you would like to
-have it, let me know in an issue and I'll respond asap!
+I highly encourage contributions of all sorts.  If you notice a
+feature that doesn't behave as you would like or simply doesn't exist,
+let me know in an issue and I'll respond ASAP!
