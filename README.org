@@ -9,7 +9,7 @@ functions.
 Melpa install =haskell-emacs= (if you choose to clone the repo
 directly, then you have to add the repo to your =load-path=, =(require
 'haskell-emacs)=), and then run =M-x haskell-emacs-init=.  After that,
-You'll prompted to enter installation options.  If you so choose,
+you'll prompted to enter installation options.  If you so choose,
 =haskell-emacs= will create the following demo library:
 
 #+BEGIN_SRC haskell
