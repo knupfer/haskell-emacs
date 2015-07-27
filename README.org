@@ -66,9 +66,10 @@ Now consider some bad input:
 
 You see that type errors result in emacs errors with good descriptions
 therein. It is an error to pass a value to a Haskell function for
-which haskell-emacs cannot marshal to the correct type. Please keep in mind that Emacs Lisp Arrays will be
-translated (recursively) to Haskell Lists and Emacs Lisp Lists will be marshaled to either Haskell Lists or
-Haskell Tuples.
+which haskell-emacs cannot marshal to the correct type. Please keep in
+mind that Emacs Lisp Arrays will be translated (recursively) to
+Haskell Lists and Emacs Lisp Lists will be marshaled to either Haskell
+Lists or Haskell Tuples.
 
 * Performance
 There is a (very) small overhead calling Haskell functions, so for very
