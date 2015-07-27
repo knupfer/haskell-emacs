@@ -2,7 +2,7 @@
 
 * What is it?
 =haskell-emacs= is a library which allows the extension of Emacs using
-Haskell.  It provides a FFI (Foreign Function Interface) for Haskell
+Haskell.  It provides an FFI (Foreign Function Interface) for Haskell
 functions.
 
 * Examples
