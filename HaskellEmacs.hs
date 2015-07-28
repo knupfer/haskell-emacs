@@ -10,7 +10,7 @@ import           Control.Concurrent
 import           Control.Monad                    (forever)
 import           Control.Parallel.Strategies
 import           Data.AttoLisp                    
-import           Data.Maybe                       (fromJust,fromMaybe, catMaybes)
+import           Data.Maybe                       (fromJust, catMaybes)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text, unpack, pack)
 import           Language.Haskell.Exts.Parser     (parseModule, ParseResult(..))
@@ -36,7 +36,7 @@ instance Arity f => Arity ((->) a f) where
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
 main = do printer <- newChan
-          forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
+          _ <- forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
           -- the lambda is necessary for a dependency on calculated tuples
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
@@ -160,7 +160,7 @@ exportsGet moduleContent =
   case parseModule (unpack moduleContent) of
     ParseOk (Module _ _ _ _ Nothing _ decls)    -> exportsFromModuleDecls decls
     ParseOk (Module _ _ _ _ (Just exspecs) _ _) -> exportsFromHeader exspecs
-    ParseFailed loc msg                         -> error msg
+    ParseFailed _ msg                         -> error msg
 
 exportsFromModuleDecls :: [Decl] -> [Text]
 exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames
