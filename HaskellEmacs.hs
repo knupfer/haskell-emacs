@@ -9,20 +9,20 @@ import           Control.Arrow
 import           Control.Concurrent
 import           Control.Monad                    (forever)
 import           Control.Parallel.Strategies
-import           Data.AttoLisp                    
-import           Data.Maybe                       (fromJust, catMaybes)
-import           Data.Monoid                      ((<>))
-import           Data.Text                        (Text, unpack, pack)
-import           Language.Haskell.Exts.Parser     (parseModule, ParseResult(..))
-import           Language.Haskell.Exts.Syntax     hiding (List, Symbol)
-import           System.IO                        (hFlush, stdout)
-import qualified Data.Attoparsec.ByteString.Char8 as AC 
+import           Data.AttoLisp
+import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
+import           Data.Maybe                       (catMaybes, fromJust)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text, pack, unpack)
 import qualified Data.Text                        as T
-import qualified Language.Haskell.Exts.Syntax     as S (Name(Ident, Symbol)) 
+import           Language.Haskell.Exts.Parser
+import           Language.Haskell.Exts.Syntax     hiding (List, Symbol)
+import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
+import           System.IO                        (hFlush, stdout)
 
 class Arity f where
   arity :: f -> Int
@@ -172,19 +172,18 @@ exportsFromModuleDecls :: [Decl] -> [Text]
 exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames
 
 functionDeclarationNames :: Decl -> Maybe Text
-functionDeclarationNames (FunBind [])                         = Nothing
-functionDeclarationNames (FunBind (Match _ nm _ _ _ _ : _)) = Just (fromName nm)
-functionDeclarationNames (PatBind _ (PVar nm) _ _)            = Just (fromName nm)
-functionDeclarationNames _                                    = Nothing
+functionDeclarationNames (FunBind [])                       = Nothing
+functionDeclarationNames (FunBind (Match _ nm _ _ _ _ : _)) = Just $ fromName nm
+functionDeclarationNames (PatBind _ (PVar nm) _ _)          = Just $ fromName nm
+functionDeclarationNames _                                  = Nothing
 
 -- Extract the unqalified function names from an ExportSpec
 exportsFromHeader :: [ExportSpec] -> [Text]
-exportsFromHeader =
-  catMaybes . fmap (fmap fromName  . exportFunction)
+exportsFromHeader = catMaybes . fmap (fmap fromName  . exportFunction)
 
 fromName :: Name -> Text
 fromName (S.Symbol str) = pack str
-fromName (S.Ident str)  = pack str
+fromName (S.Ident  str) = pack str
 
 exportFunction :: ExportSpec -> Maybe Name
 exportFunction (EVar _ qname)      = unQalifiedName qname
