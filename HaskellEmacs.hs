@@ -14,7 +14,7 @@ import           Data.Maybe                       (fromJust, catMaybes)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text, unpack, pack)
 import           Language.Haskell.Exts.Parser     (parseModule, ParseResult(..))
-import           Language.Haskell.Exts.Syntax     (Module(..), ExportSpec(..), QName(..), Name, Decl(FunBind, PatBind), Match(Match), Pat(..))
+import           Language.Haskell.Exts.Syntax     hiding (List, Symbol)
 import           System.IO                        (hFlush, stdout)
 import qualified Data.Attoparsec.ByteString.Char8 as AC 
 import qualified Data.Attoparsec.ByteString.Lazy  as A
@@ -141,10 +141,13 @@ formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
   where inject s = T.replace ("{--<<" <> s <> ">>--}")
         pretty = T.replace "),(" ")\n  , ("
 
--- | Import statement of all modules and all their functions.
+-- | Import statement of all modules and all their qualified functions.
 allExports :: [Text] -> (Text, [Text])
-allExports = g . filter (not . null) . map exportsGet
-  where g = T.unlines . map head &&& concatMap tail
+allExports = qualify . filter (\x -> hasFunctions x && isLibrary x) . map exportsGet
+  where qualify      = T.unlines . map (("import qualified " <>) . fst)
+                       &&& concatMap (\x -> map ((fst x <> ".") <>) $ snd x)
+        isLibrary    = (/= "Main") . fst
+        hasFunctions = not . null . snd
 
 -- | List of haskell functions which get querried for their arity.
 arityFormat :: [Text] -> Text
@@ -154,13 +157,16 @@ arityFormat ts = T.intercalate ","
                  $ ts
   where padding = maximum [T.length t | t <- ts] + 4
 
--- | Retrieve list of exported functions in a haskell module.
-exportsGet :: Text -> [Text]
+-- | Retrieve the name and a list of exported functions of a haskell module.
+exportsGet :: Text -> (Text, [Text])
 exportsGet moduleContent =
   case parseModule (unpack moduleContent) of
-    ParseOk (Module _ _ _ _ Nothing _ decls)    -> exportsFromModuleDecls decls
-    ParseOk (Module _ _ _ _ (Just exspecs) _ _) -> exportsFromHeader exspecs
-    ParseFailed _ msg                         -> error msg
+    ParseOk (Module _ (ModuleName name) _ _ Nothing _ decls)
+            -> (T.pack name, exportsFromModuleDecls decls)
+    ParseOk (Module _ (ModuleName name) _ _ (Just exspecs) _ _)
+            -> (T.pack name, exportsFromHeader exspecs)
+    ParseFailed _ msg
+            -> error msg
 
 exportsFromModuleDecls :: [Decl] -> [Text]
 exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames
