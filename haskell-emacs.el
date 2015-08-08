@@ -112,7 +112,7 @@ Haskell packages:
 Consider that you've got the following toy program:
 
 ---- ~/.emacs.d/haskell-fun/Matrix.hs
-module Matrix (identity,isIdentity,dyadic,transpose) where
+module Matrix where
 
 import qualified Data.List as L
 
@@ -401,7 +401,7 @@ Read C-h f haskell-emacs-init for more instructions")
     (if example
         (with-temp-buffer
           (insert "
-module Matrix (identity,isIdentity,dyadic,transpose) where
+module Matrix where
 
 import qualified Data.List as L
 
