@@ -156,6 +156,7 @@ You'll need:
 - ghc
 - cabal
 - atto-lisp
+- haskell-src-exts
 - parallel
 - utf8-string
 
