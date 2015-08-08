@@ -270,6 +270,10 @@ If you want to use such functions in your elisp library, do the following:
     (setq haskell-emacs--response nil)
     (setq haskell-emacs--function-hash
           (with-temp-buffer (mapc 'insert-file-contents funs)
+                            (insert haskell-emacs-dir
+                                    (format "%S" haskell-emacs-ghc-flags)
+                                    (format "%S" haskell-emacs-nix-shell-args)
+                                    haskell-emacs-ghc-executable)
                             (sha1 (buffer-string))))
     (setq has-changed
           (not (and (file-exists-p heE)
