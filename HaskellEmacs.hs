@@ -19,6 +19,7 @@ import           Data.Maybe                       (catMaybes, fromJust)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text, pack, unpack)
 import qualified Data.Text                        as T
+import           Language.Haskell.Exts            (parseFileContents)
 import           Language.Haskell.Exts.Parser
 import           Language.Haskell.Exts.Syntax     hiding (List, Symbol)
 import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
@@ -159,9 +160,10 @@ arityFormat ts = T.intercalate ","
   where padding = maximum [T.length t | t <- ts] + 4
 
 -- | Retrieve the name and a list of exported functions of a haskell module.
+-- It should use 'parseFileContents' to take pragmas into account.
 exportsGet :: Text -> Either String (Text, [Text])
 exportsGet moduleContent =
-  case parseModule (unpack moduleContent) of
+  case parseFileContents (unpack moduleContent) of
     ParseOk (Module _ (ModuleName name) _ _ Nothing _ decls)
             -> Right (T.pack name, exportsFromModuleDecls decls)
     ParseOk (Module _ (ModuleName name) _ _ (Just exspecs) _ _)
