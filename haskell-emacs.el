@@ -243,6 +243,7 @@ If you want to use such functions in your elisp library, do the following:
          (process-connection-type nil)
          (arity-list)
          (docs)
+         (has-changed t)
          (heF ".HaskellEmacs.hs")
          (heE (concat haskell-emacs-dir ".HaskellEmacs"
                       (when (eq system-type 'windows-nt) ".exe")))
@@ -250,26 +251,35 @@ If you want to use such functions in your elisp library, do the following:
                  (insert-file-contents
                   (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
                  (buffer-string)))
-         (stop-proc '(when haskell-emacs--proc
-                       (set-process-sentinel haskell-emacs--proc nil)
-                       (delete-process haskell-emacs--proc)))
-         (start-proc '(progn
-                        (setq haskell-emacs--proc
-                              (start-process "hask" nil heE))
-                        (set-process-filter haskell-emacs--proc
-                                            'haskell-emacs--filter))))
+         (stop-proc
+          '(when haskell-emacs--proc
+             (set-process-sentinel haskell-emacs--proc nil)
+             (delete-process haskell-emacs--proc)))
+         (start-proc
+          '(progn
+             (setq haskell-emacs--proc
+                   (start-process "hask" nil heE))
+             (set-process-filter haskell-emacs--proc
+                                 'haskell-emacs--filter)
+             (set-process-query-on-exit-flag haskell-emacs--proc nil)
+             (set-process-sentinel haskell-emacs--proc
+                                   (lambda (proc sign)
+                                     (let ((debug-on-error t))
+                                       (error "Haskell-emacs crashed")))))))
     (eval stop-proc)
     (setq haskell-emacs--response nil)
     (setq haskell-emacs--function-hash
           (with-temp-buffer (mapc 'insert-file-contents funs)
                             (sha1 (buffer-string))))
-    (unless
-        (and (file-exists-p heE)
-             (with-temp-buffer
-               (insert-file-contents (concat haskell-emacs-dir heF))
-               (and (re-search-forward haskell-emacs--api-hash nil t)
-                    (re-search-forward haskell-emacs--function-hash nil t))))
-      (haskell-emacs--compile code))
+    (setq has-changed
+          (not (and (file-exists-p heE)
+                    (with-temp-buffer
+                      (insert-file-contents (concat haskell-emacs-dir heF))
+                      (and (re-search-forward haskell-emacs--api-hash
+                                              nil t)
+                           (re-search-forward haskell-emacs--function-hash
+                                              nil t))))))
+    (when has-changed (haskell-emacs--compile code))
     (eval start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
                                      (insert-file-contents f)
@@ -284,14 +294,15 @@ If you want to use such functions in your elisp library, do the following:
                       docs)))
     (dotimes (a 2)
       (setq arity-list (haskell-emacs--fun-body 'arityList '(0)))
-      (haskell-emacs--compile
-       (haskell-emacs--fun-body
-        'formatCode
-        (list (list (car funs)
-                    (car arity-list)
-                    (haskell-emacs--fun-body 'arityFormat
-                                             (car (cdr funs))))
-              code))))
+      (when has-changed
+        (haskell-emacs--compile
+         (haskell-emacs--fun-body
+          'formatCode
+          (list (list (car funs)
+                      (car arity-list)
+                      (haskell-emacs--fun-body 'arityFormat
+                                               (car (cdr funs))))
+                code)))))
     (let ((arity (cadr arity-list))
           (table-of-funs (make-hash-table :test 'equal)))
       (mapc (lambda (func)
@@ -310,15 +321,16 @@ If you want to use such functions in your elisp library, do the following:
                      (insert value)
                      (eval-buffer))))
                table-of-funs))
-    (if (equal first-time "example")
-        (message
-         "Now you can run the examples from C-h f haskell-emacs-init.
-For example (Matrix.transpose '((1 2 3) (4 5 6)))")
-      (if (equal first-time "no-example")
+    (when arg
+      (if (equal first-time "example")
           (message
-           "Now you can populate your `haskell-emacs-dir' with haskell modules.
+           "Now you can run the examples from C-h f haskell-emacs-init.
+For example (Matrix.transpose '((1 2 3) (4 5 6)))")
+        (if (equal first-time "no-example")
+            (message
+             "Now you can populate your `haskell-emacs-dir' with haskell modules.
 Read C-h f haskell-emacs-init for more instructions")
-        (message "Finished compiling haskell-emacs.")))))
+          (message "Finished compiling haskell-emacs."))))))
 
 (defun haskell-emacs--filter (process output)
   "Haskell PROCESS filter for OUTPUT from functions."
