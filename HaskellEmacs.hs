@@ -35,7 +35,7 @@ instance Arity f => Arity ((->) a f) where
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
 main = do printer <- newChan
-          _ <- forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
+          forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
           -- the lambda is necessary for a dependency on calculated tuples
           mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
                 =<< fullParse <$> B.getContents
@@ -54,11 +54,11 @@ traverseLisp l = case l of
                  | length xs /= 1 = run x =<< List <$> eval xs
                  | otherwise = run x =<< traverseLisp (head xs)
 
--- | Takes an stream of instructions and returns a parsed list of
+-- | Takes a stream of instructions and returns a parsed list of
 -- functions.
 fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
-fullParse c = case parseInput c of A.Done a b -> b : fullParse a
-                                   A.Fail {}  -> []
+fullParse a = case parseInput a of A.Done a' b -> b : fullParse a'
+                                   A.Fail {}   -> []
 
 -- | Parse an instruction and stamp the number of the instruction into
 -- the resulting function.
@@ -115,7 +115,7 @@ normalize a               = List [a]
 -- | Takes tuples of function names and their arities and returns
 -- haskell source code which gets spliced back into a module.
 toDispatcher :: [(Text, Int)] -> (Text, [Text])
-toDispatcher fs = T.intercalate "," . map fun &&& map (pars . args . snd) $ fs
+toDispatcher fs   = T.intercalate "," . map fun &&& map (pars . args . snd) $ fs
   where args n    = T.unwords [T.pack $ 'x' : show x | x <- [1..n]]
         pars x    = "(" <> x <> ")"
         fun (t,1) = wrap t t
@@ -138,15 +138,15 @@ formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
                                        . inject "export" (pretty exports)
                                        . inject "import" imports
   where inject s = T.replace ("{--<<" <> s <> ">>--}")
-        pretty = T.replace "),(" ")\n  , ("
+        pretty   = T.replace "),(" ")\n  , ("
 
 -- | Import statement of all modules and all their qualified functions.
 allExports :: [String] -> Either String (String, [String])
 allExports xs = qualify . filter (\x -> hasFunctions x && isLibrary x)
                           <$> mapM exportsGet xs
-  where qualify      = unlines . map (("import qualified " <>) . fst)
-                       &&& concatMap (\x -> map ((fst x <> ".") <>) $ snd x)
-        isLibrary    = (/= "Main") . fst
+  where qualify ys   = ( unlines ["import qualified " <> q | (q,_) <- ys]
+                       , [q <> "." <> fromName n | (q,ns) <- ys, n <- ns])
+        isLibrary    = (/="Main") . fst
         hasFunctions = not . null . snd
 
 -- | List of haskell functions which get querried for their arity.
@@ -159,27 +159,24 @@ arityFormat ts = T.intercalate ","
 
 -- | Retrieve the name and a list of exported functions of a haskell module.
 -- It should use 'parseFileContents' to take pragmas into account.
-exportsGet :: String -> Either String (String, [String])
-exportsGet moduleContent =
-  case parseFileContents moduleContent of
-    ParseOk (Module _ (ModuleName name) _ _ Nothing _ decls)
-            -> Right (name, exportsFromModuleDecls decls)
-    ParseOk (Module _ (ModuleName name) _ _ (Just exspecs) _ _)
-            -> Right (name, exportsFromHeader exspecs)
-    ParseFailed _ msg
-            -> Left msg
+exportsGet :: String -> Either String (String, [Name])
+exportsGet content = case parseFileContents content of
+  ParseOk (Module _ (ModuleName name) _ _ header _ decls)
+    -> Right . (,) name $ maybe (exportsFromDecls decls)
+                                 exportsFromHeader header
+  ParseFailed _ msg -> Left msg
 
-exportsFromModuleDecls :: [Decl] -> [String]
-exportsFromModuleDecls = mapMaybe functionDeclarationNames
+exportsFromDecls :: [Decl] -> [Name]
+exportsFromDecls = mapMaybe declarationNames
 
-functionDeclarationNames :: Decl -> Maybe String
-functionDeclarationNames (FunBind (Match _ name _ _ _ _ : _)) = Just $ fromName name
-functionDeclarationNames (PatBind _ (PVar name) _ _)          = Just $ fromName name
-functionDeclarationNames _                                    = Nothing
+declarationNames :: Decl -> Maybe Name
+declarationNames (FunBind (Match _ name _ _ _ _ : _)) = Just name
+declarationNames (PatBind _ (PVar name) _ _)          = Just name
+declarationNames _                                    = Nothing
 
 -- | Extract the unqualified function names from an ExportSpec.
-exportsFromHeader :: [ExportSpec] -> [String]
-exportsFromHeader = mapMaybe (fmap fromName . exportFunction)
+exportsFromHeader :: [ExportSpec] -> [Name]
+exportsFromHeader = mapMaybe exportFunction
 
 fromName :: Name -> String
 fromName (S.Symbol str) = str
