@@ -392,20 +392,27 @@ Read C-h f haskell-emacs-init for more instructions")
 
 (defun haskell-emacs--install-dialog ()
   "Run the installation dialog."
-  (let ((sandbox (yes-or-no-p "Create a cabal sandbox? "))
-        (install (yes-or-no-p "Cabal install the dependencies? "))
-        (example (yes-or-no-p "Add a simple example? ")))
+  (let* ((sandbox (yes-or-no-p "Create a cabal sandbox? "))
+         (install (yes-or-no-p "Cabal install the dependencies? "))
+         (update  (when install (yes-or-no-p "Update cabal packages? ")))
+         (example (yes-or-no-p "Add a simple example? ")))
     (when sandbox
+      (message "Creating sandbox...")
       (with-temp-buffer
-        (message "Creating sandbox...")
         (cd haskell-emacs-dir)
         (unless (= 0 (call-process "cabal" nil t nil
                                    "sandbox"
                                    "init"))
           (error (buffer-string)))))
-    (when install
+    (when update
+      (message "Updating cabal packages...")
       (with-temp-buffer
-        (message "Installing dependencies...")
+        (unless (= 0 (call-process "cabal" nil t nil
+                                   "update"))
+          (error (buffer-string)))))
+    (when install
+      (message "Installing dependencies...")
+      (with-temp-buffer
         (cd haskell-emacs-dir)
         (unless (= 0 (call-process "cabal" nil t nil
                                    "install"
