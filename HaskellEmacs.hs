@@ -19,9 +19,7 @@ import           Data.Maybe                       (catMaybes, fromJust)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text, pack, unpack)
 import qualified Data.Text                        as T
-import           Language.Haskell.Exts            (parseFileContents)
-import           Language.Haskell.Exts.Parser
-import           Language.Haskell.Exts.Syntax     hiding (List, Symbol)
+import           Language.Haskell.Exts            hiding (List, Symbol, name, sym)
 import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
 import           System.IO                        (hFlush, stdout)
 
