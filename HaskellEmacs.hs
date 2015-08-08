@@ -15,9 +15,9 @@ import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (catMaybes, fromJust)
+import           Data.Maybe                       (catMaybes, fromJust, mapMaybe)
 import           Data.Monoid                      ((<>))
-import           Data.Text                        (Text, pack, unpack)
+import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import           Language.Haskell.Exts            hiding (List, Symbol, name, sym)
 import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
@@ -141,10 +141,10 @@ formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
         pretty = T.replace "),(" ")\n  , ("
 
 -- | Import statement of all modules and all their qualified functions.
-allExports :: [Text] -> Either String (Text, [Text])
+allExports :: [String] -> Either String (String, [String])
 allExports xs = qualify . filter (\x -> hasFunctions x && isLibrary x)
                           <$> mapM exportsGet xs
-  where qualify      = T.unlines . map (("import qualified " <>) . fst)
+  where qualify      = unlines . map (("import qualified " <>) . fst)
                        &&& concatMap (\x -> map ((fst x <> ".") <>) $ snd x)
         isLibrary    = (/= "Main") . fst
         hasFunctions = not . null . snd
@@ -159,32 +159,31 @@ arityFormat ts = T.intercalate ","
 
 -- | Retrieve the name and a list of exported functions of a haskell module.
 -- It should use 'parseFileContents' to take pragmas into account.
-exportsGet :: Text -> Either String (Text, [Text])
+exportsGet :: String -> Either String (String, [String])
 exportsGet moduleContent =
-  case parseFileContents (unpack moduleContent) of
+  case parseFileContents moduleContent of
     ParseOk (Module _ (ModuleName name) _ _ Nothing _ decls)
-            -> Right (T.pack name, exportsFromModuleDecls decls)
+            -> Right (name, exportsFromModuleDecls decls)
     ParseOk (Module _ (ModuleName name) _ _ (Just exspecs) _ _)
-            -> Right (T.pack name, exportsFromHeader exspecs)
+            -> Right (name, exportsFromHeader exspecs)
     ParseFailed _ msg
             -> Left msg
 
-exportsFromModuleDecls :: [Decl] -> [Text]
-exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames
+exportsFromModuleDecls :: [Decl] -> [String]
+exportsFromModuleDecls = mapMaybe functionDeclarationNames
 
-functionDeclarationNames :: Decl -> Maybe Text
-functionDeclarationNames (FunBind [])                       = Nothing
-functionDeclarationNames (FunBind (Match _ nm _ _ _ _ : _)) = Just $ fromName nm
-functionDeclarationNames (PatBind _ (PVar nm) _ _)          = Just $ fromName nm
-functionDeclarationNames _                                  = Nothing
+functionDeclarationNames :: Decl -> Maybe String
+functionDeclarationNames (FunBind (Match _ name _ _ _ _ : _)) = Just $ fromName name
+functionDeclarationNames (PatBind _ (PVar name) _ _)          = Just $ fromName name
+functionDeclarationNames _                                    = Nothing
 
 -- | Extract the unqualified function names from an ExportSpec
-exportsFromHeader :: [ExportSpec] -> [Text]
-exportsFromHeader = catMaybes . fmap (fmap fromName  . exportFunction)
+exportsFromHeader :: [ExportSpec] -> [String]
+exportsFromHeader = mapMaybe (fmap fromName . exportFunction)
 
-fromName :: Name -> Text
-fromName (S.Symbol str) = pack str
-fromName (S.Ident  str) = pack str
+fromName :: Name -> String
+fromName (S.Symbol str) = str
+fromName (S.Ident  str) = str
 
 exportFunction :: ExportSpec -> Maybe Name
 exportFunction (EVar _ qname)      = unQalifiedName qname
