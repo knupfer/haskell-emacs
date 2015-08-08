@@ -180,7 +180,7 @@ functionDeclarationNames (FunBind (Match _ nm _ _ _ _ : _)) = Just $ fromName nm
 functionDeclarationNames (PatBind _ (PVar nm) _ _)          = Just $ fromName nm
 functionDeclarationNames _                                  = Nothing
 
--- Extract the unqalified function names from an ExportSpec
+-- | Extract the unqualified function names from an ExportSpec
 exportsFromHeader :: [ExportSpec] -> [Text]
 exportsFromHeader = catMaybes . fmap (fmap fromName  . exportFunction)
 
