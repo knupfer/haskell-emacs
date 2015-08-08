@@ -177,7 +177,7 @@ functionDeclarationNames (FunBind (Match _ name _ _ _ _ : _)) = Just $ fromName 
 functionDeclarationNames (PatBind _ (PVar name) _ _)          = Just $ fromName name
 functionDeclarationNames _                                    = Nothing
 
--- | Extract the unqualified function names from an ExportSpec
+-- | Extract the unqualified function names from an ExportSpec.
 exportsFromHeader :: [ExportSpec] -> [String]
 exportsFromHeader = mapMaybe (fmap fromName . exportFunction)
 
@@ -186,11 +186,11 @@ fromName (S.Symbol str) = str
 fromName (S.Ident  str) = str
 
 exportFunction :: ExportSpec -> Maybe Name
-exportFunction (EVar _ qname)      = unQalifiedName qname
+exportFunction (EVar _ qname)      = unQualifiedName qname
 exportFunction (EModuleContents _) = Nothing
 exportFunction _                   = Nothing
 
-unQalifiedName :: QName -> Maybe Name
-unQalifiedName (Qual _ name) = Just name
-unQalifiedName (UnQual name) = Just name
-unQalifiedName _             = Nothing
+unQualifiedName :: QName -> Maybe Name
+unQualifiedName (Qual _ name) = Just name
+unQualifiedName (UnQual name) = Just name
+unQualifiedName _             = Nothing
