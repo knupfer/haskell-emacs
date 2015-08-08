@@ -142,8 +142,9 @@ formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
         pretty = T.replace "),(" ")\n  , ("
 
 -- | Import statement of all modules and all their qualified functions.
-allExports :: [Text] -> (Text, [Text])
-allExports = qualify . filter (\x -> hasFunctions x && isLibrary x) . map exportsGet
+allExports :: [Text] -> Either String (Text, [Text])
+allExports xs = qualify . filter (\x -> hasFunctions x && isLibrary x)
+                          <$> mapM exportsGet xs
   where qualify      = T.unlines . map (("import qualified " <>) . fst)
                        &&& concatMap (\x -> map ((fst x <> ".") <>) $ snd x)
         isLibrary    = (/= "Main") . fst
@@ -158,15 +159,15 @@ arityFormat ts = T.intercalate ","
   where padding = maximum [T.length t | t <- ts] + 4
 
 -- | Retrieve the name and a list of exported functions of a haskell module.
-exportsGet :: Text -> (Text, [Text])
+exportsGet :: Text -> Either String (Text, [Text])
 exportsGet moduleContent =
   case parseModule (unpack moduleContent) of
     ParseOk (Module _ (ModuleName name) _ _ Nothing _ decls)
-            -> (T.pack name, exportsFromModuleDecls decls)
+            -> Right (T.pack name, exportsFromModuleDecls decls)
     ParseOk (Module _ (ModuleName name) _ _ (Just exspecs) _ _)
-            -> (T.pack name, exportsFromHeader exspecs)
+            -> Right (T.pack name, exportsFromHeader exspecs)
     ParseFailed _ msg
-            -> error msg
+            -> Left msg
 
 exportsFromModuleDecls :: [Decl] -> [Text]
 exportsFromModuleDecls = catMaybes . fmap functionDeclarationNames

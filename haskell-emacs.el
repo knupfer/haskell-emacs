@@ -290,8 +290,11 @@ If you want to use such functions in your elisp library, do the following:
                                      (buffer-string)))
                        funs)
           docs (apply 'concat funs)
-          funs (haskell-emacs--fun-body 'allExports (apply 'list "" "" funs))
-          docs (haskell-emacs--fun-body
+          funs (haskell-emacs--fun-body 'allExports (apply 'list "" "" funs)))
+    (when (stringp funs)
+      (eval stop-proc)
+      (error funs))
+    (setq docs (haskell-emacs--fun-body
                 'getDocumentation
                 (list (mapcar (lambda (x) (cadr (split-string x "\\.")))
                               (cadr funs))
