@@ -2,9 +2,8 @@
 
 ;;; Commentary:
 
-;; Ensure that you've got a symlink from HaskellEmacsTest.hs to your
-;; `haskell-emacs-dir', reinitialize haskell-emacs and evaluate this
-;; buffer.
+;; Add this directory to your `load-path', reinitialize haskell-emacs
+;; and evaluate this buffer.
 
 ;;; Code:
 (with-no-warnings
