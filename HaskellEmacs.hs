@@ -36,9 +36,7 @@ instance Arity f => Arity ((->) a f) where
 main :: IO ()
 main = do printer <- newChan
           forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
-          -- the lambda is necessary for a dependency on calculated tuples
-          mapM_ (\(fun,l) -> forkIO $ writeChan printer $! fun l)
-                =<< fullParse <$> B.getContents
+          mapM_ (forkIO . (writeChan printer $!)) =<< fullParse <$> B.getContents
 
 -- | Recursively evaluate a lisp in parallel, using functions defined
 -- by the user (see documentation of the emacs function `haskell-emacs-init').
@@ -54,19 +52,19 @@ traverseLisp l = case l of
                  | length xs /= 1 = run x =<< List <$> eval xs
                  | otherwise = run x =<< traverseLisp (head xs)
 
--- | Takes a stream of instructions and returns a parsed list of
--- functions.
-fullParse :: B.ByteString -> [(Lisp -> B.ByteString, Lisp)]
+-- | Takes a stream of instructions and returns lazy list of
+-- results.
+fullParse :: B.ByteString -> [B.ByteString]
 fullParse a = case parseInput a of A.Done a' b -> b : fullParse a'
                                    A.Fail {}   -> []
 
 -- | Parse an instruction and stamp the number of the instruction into
--- the resulting function.
-parseInput :: B.ByteString -> A.Result (Lisp -> B.ByteString, Lisp)
+-- the result.
+parseInput :: B.ByteString -> A.Result B.ByteString
 parseInput = A.parse $ do
   i <- A.option 0 AC.decimal
   l <- lisp
-  return (resultToText i . traverseLisp, l)
+  return . resultToText i . traverseLisp $ l
 
 -- | Scrape the documentation of haskell functions to serve it in emacs.
 getDocumentation :: [T.Text]  -> T.Text -> [T.Text]
