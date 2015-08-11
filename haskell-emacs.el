@@ -105,6 +105,7 @@ Dependencies:
 
 Haskell packages:
  - atto-lisp
+ - happy
  - haskell-src-exts
  - parallel
  - utf8-string
@@ -419,6 +420,7 @@ Read C-h f haskell-emacs-init for more instructions")
         (cd haskell-emacs-dir)
         (unless (= 0 (call-process "cabal" nil t nil
                                    "install"
+                                   "happy"
                                    "atto-lisp"
                                    "haskell-src-exts"
                                    "parallel"
