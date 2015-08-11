@@ -12,8 +12,11 @@
         (long)
         (nothingMulti)
         (fuse)
+        (serial)
+        (parallel)
         (num 5)
-        (txt "test"))
+        (txt "test")
+        (now (current-time)))
     (mapc
      (lambda (x)
        (unless (equal (eval (car x)) (cadr x))
@@ -72,29 +75,33 @@
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")))))
              20000))
-    (setq fuse (/ (car (benchmark-run 5000
-                         (progn (HaskellEmacsTest.multiply 1 1)
-                                (HaskellEmacsTest.multiply 1 1)
-                                (HaskellEmacsTest.multiply 1 1)
-                                (HaskellEmacsTest.multiply 1 1)
-                                (HaskellEmacsTest.multiply 1 1)
-                                (HaskellEmacsTest.multiply 1 1)
-                                (HaskellEmacsTest.multiply 1 1))))
-                  (car (benchmark-run 5000
-                         (HaskellEmacsTest.multiply
-                          (HaskellEmacsTest.multiply
-                           (HaskellEmacsTest.multiply 1 1)
-                           (HaskellEmacsTest.multiply 1 1))
-                          (HaskellEmacsTest.multiply
-                           (HaskellEmacsTest.multiply 1 1)
-                           (HaskellEmacsTest.multiply 1 1)))))))
+    (setq serial (car (benchmark-run 4
+                        (HaskellEmacsTest.doWork 15000000 0 0))))
+    (setq parallel
+          (car (benchmark-run 1
+                 (mapcar 'eval (list
+                                (HaskellEmacsTest.doWork-async 15000000 0 0)
+                                (HaskellEmacsTest.doWork-async 15000000 0 0)
+                                (HaskellEmacsTest.doWork-async 15000000 0 0)
+                                (HaskellEmacsTest.doWork-async 15000000 0 0))))))
+    (setq fuse
+          (car (benchmark-run 1
+                 (HaskellEmacsTest.multiply
+                  (HaskellEmacsTest.multiply
+                   (HaskellEmacsTest.doWork 15000000 0 0)
+                   (HaskellEmacsTest.doWork 15000000 0 0))
+                  (HaskellEmacsTest.multiply
+                   (HaskellEmacsTest.doWork 15000000 0 0)
+                   (HaskellEmacsTest.doWork 15000000 0 0))))))
     (unless err
       (setq err "No errors were found."))
     (let ((result (concat err "\n\n"
                           "Sync  fun call : " (format "%.1e" nothing) "\n"
                           "Async fun call : " (format "%.1e" nothingMulti) "\n"
                           "Costs per char : " (format "%.1e" long) "\n"
-                          "Fusion speed   : " (format "%s" fuse))))
+                          "Parallel speed : " (format "x%.2f" (/ serial parallel)) "\n"
+                          "Branch speed   : " (format "x%.2f" (/ serial fuse)) "\n"
+                          "Total time     : " (format "%s" (float-time (time-subtract (current-time) now))))))
       (display-message-or-buffer result))))
 
 (provide 'haskell-emacs-test)

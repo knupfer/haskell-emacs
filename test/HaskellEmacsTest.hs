@@ -93,3 +93,6 @@ longAnswer n = replicate (2^n) 'a'
 nthFib :: Int -> Int
 nthFib = (!!) fibs
   where fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+
+doWork :: Int -> Double -> Double -> Double
+doWork x y z = foldr (+) y $ take x [0.0000001,z..]
