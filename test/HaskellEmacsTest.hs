@@ -1,28 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module HaskellEmacsTest (nothing,
-             unicode,
-             unicodeText,
-             constantText,
-             concatString,
-             concatText,
-             constantString,
-             constantTrue,
-             constantFalse,
-             notBool,
-             allTrue,
-             anyTrue,
-             nextNum,
-             summation,
-             constant,
-             squareRoot,
-             bothTrue,
-             multiply,
-             takeSome,
-             switch,
-             concatFst,
-             longAnswer,
-             nthFib) where
+module HaskellEmacsTest where
 
 import qualified Data.Text as T
 
