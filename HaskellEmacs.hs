@@ -64,7 +64,7 @@ parseInput :: B.ByteString -> A.Result B.ByteString
 parseInput = A.parse $ do
   i <- A.option 0 AC.decimal
   l <- lisp
-  return . resultToText i . traverseLisp $ l
+  return . formatResult i . traverseLisp $ l
 
 -- | Scrape the documentation of haskell functions to serve it in emacs.
 getDocumentation :: [Text] -> Text -> [Text]
@@ -82,11 +82,11 @@ getDocumentation funs code =
 run :: Text -> Lisp -> Result Lisp
 run = fromJust . flip M.lookup dispatcher
 
-resultToText :: Int -> Result Lisp -> B.ByteString
-resultToText i l = case l of
-       Success s -> f [ ] $ encode s
-       Error s   -> f [1] $ B.pack s
-   where f err t = encode ([B.length t, i] ++ err) <> t
+formatResult :: Int -> Result Lisp -> B.ByteString
+formatResult i l = case l of
+      Success s -> f [ ] $ encode s
+      Error s   -> f [1] $ B.pack s
+  where f err t = encode ([B.length t, i] ++ err) <> t
 
 -- | Map of available functions which get transformed to work on lisp.
 dispatcher :: M.Map Text (Lisp -> Result Lisp)
