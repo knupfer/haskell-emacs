@@ -67,7 +67,7 @@ parseInput = A.parse $ do
   return . resultToText i . traverseLisp $ l
 
 -- | Scrape the documentation of haskell functions to serve it in emacs.
-getDocumentation :: [T.Text]  -> T.Text -> [T.Text]
+getDocumentation :: [Text] -> Text -> [Text]
 getDocumentation funs code =
   map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ [""])
       . reverse
