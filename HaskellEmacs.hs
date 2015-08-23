@@ -15,7 +15,7 @@ import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (fromJust, mapMaybe)
+import           Data.Maybe                       (mapMaybe)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
@@ -80,7 +80,8 @@ getDocumentation funs code =
 
 -- | Takes a function (described in a Text) and feeds it a lisp.
 run :: Text -> Lisp -> Result Lisp
-run = fromJust . flip M.lookup dispatcher
+run t l = maybe (Error "Function not found")
+                ($l) $ M.lookup t dispatcher
 
 formatResult :: Int -> Result Lisp -> B.ByteString
 formatResult i l = case l of
