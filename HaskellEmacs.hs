@@ -4,7 +4,7 @@
 
 module Main where
 {--<<import>>--}
-import           Control.Applicative              ((<$>))
+import           Control.Applicative              ((<$>),(<*>))
 import           Control.Arrow
 import           Control.Concurrent
 import           Control.Monad                    (forever)
@@ -102,7 +102,7 @@ dispatcher = M.fromList $
 -- | Transform a curried function to a function which receives and
 -- returns lisp forms.
 transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Result Lisp
-transform f = fmap (toLisp . f) . fromLisp
+transform = (. fromLisp) . fmap . (toLisp .)
 
 -- | Prevent bad input for the bootstrap.
 normalize :: Lisp -> Lisp
@@ -140,8 +140,8 @@ formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
 
 -- | Import statement of all modules and all their qualified functions.
 allExports :: [String] -> Either String (String, [String])
-allExports xs = qualify . filter (\x -> hasFunctions x && isLibrary x)
-                          <$> mapM exportsGet xs
+allExports = (qualify . filter ((&&) <$> hasFunctions <*> isLibrary) <$>)
+                        . mapM exportsGet
   where qualify ys   = ( unlines ["import qualified " <> q | (q,_) <- ys]
                        , [q <> "." <> fromName n | (q,ns) <- ys, n <- ns])
         isLibrary    = (/="Main") . fst
