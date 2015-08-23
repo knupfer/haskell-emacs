@@ -301,7 +301,7 @@ If you want to use such functions in your elisp library, do the following:
                               (cadr funs))
                       docs)))
     (dotimes (a 2)
-      (setq arity-list (haskell-emacs--fun-body 'arityList '(0)))
+      (setq arity-list (haskell-emacs--fun-body 'arityList '()))
       (when has-changed
         (haskell-emacs--compile
          (haskell-emacs--fun-body

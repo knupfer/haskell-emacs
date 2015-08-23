@@ -4,8 +4,8 @@
 
 module Main where
 {--<<import>>--}
-import           Control.Applicative              ((<$>),(<*>))
-import           Control.Arrow
+import           Control.Applicative              ((<$>), (<*>))
+import           Control.Arrow                    hiding (app)
 import           Control.Concurrent
 import           Control.Monad                    (forever)
 import           Control.Parallel.Strategies
@@ -19,7 +19,9 @@ import           Data.Maybe                       (mapMaybe)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
-import           Language.Haskell.Exts            hiding (List, Symbol, name, sym)
+import           Language.Haskell.Exts            hiding (List, Symbol, name,
+                                                   sym)
+import           Language.Haskell.Exts.SrcLoc
 import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
 import           System.IO                        (hFlush, stdout)
 
@@ -94,11 +96,10 @@ dispatcher :: M.Map Text (Lisp -> Result Lisp)
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat . normalize)
   , ("allExports",  transform allExports)
-  , ("arityList",   transform . (const :: a -> Lisp -> a) $ toDispatcher arityList)
+  , ("arityList",   transform $ \() -> toDispatcher arityList)
   , ("formatCode",  transform $ uncurry formatCode)
   , ("getDocumentation", transform $ uncurry getDocumentation)
-  ] ++
-  [ {--<<export>>--} ]
+  ] ++ []{--<<export>>--}
 
 -- | Transform a curried function to a function which receives and
 -- returns lisp forms.
@@ -113,48 +114,39 @@ normalize a               = List [a]
 
 -- | Takes tuples of function names and their arities and returns
 -- haskell source code which gets spliced back into a module.
-toDispatcher :: [(Text, Int)] -> (Text, [Text])
-toDispatcher fs   = T.intercalate "," . map fun &&& map (pars . args . snd) $ fs
-  where args n    = T.unwords [T.pack $ 'x' : show x | x <- [1..n]]
-        pars x    = "(" <> x <> ")"
-        fun (t,1) = wrap t t
-        fun (t,n) = wrap t . T.unwords . ("$" :) $ case n of
-          0 -> [pars "const :: a -> Lisp -> a", t]
-          2 -> ["uncurry", t]
-          _ -> ["\\", pars . T.replace " " "," $ args n, "->", t, args n]
-        wrap t ts = pars $ T.justifyLeft padding ' ' ("\"" <> t <> "\",")
-                    <> "transform " <> ts
-        padding = maximum [T.length f | (f,_) <- fs] + 4
+toDispatcher :: [(String, Int)] -> (String, [String])
+toDispatcher = ("++"++) . prettyPrint . listE . map fun
+               &&& map (filter (\x -> x/=',' && x/='\n')
+               . prettyPrint . pvarTuple . genNames "x" . snd)
+  where fun (f,n) = tuple [strE f, app (function "transform")
+                          $ lamE noLoc [pvarTuple $ genNames "x" n]
+                          (appFun (function f) . map var $ genNames "x" n)]
 
 -- | List of functions and their arities (filled by emacs).
-arityList :: [(Text, Int)]
-arityList =
-  [ {--<<arity>>--} ]
+arityList :: [(String, Int)]
+arityList = []{--<<arity>>--}
 
 -- | Splice user functions into the haskell module.
 formatCode :: (Text, Text, Text) -> Text -> Text
-formatCode (imports, exports, arities) = inject "arity"  (pretty arities)
-                                       . inject "export" (pretty exports)
+formatCode (imports, exports, arities) = inject "arity"  arities
+                                       . inject "export" exports
                                        . inject "import" imports
   where inject s = T.replace ("{--<<" <> s <> ">>--}")
-        pretty   = T.replace "),(" ")\n  , ("
 
 -- | Import statement of all modules and all their qualified functions.
 allExports :: [String] -> Either String (String, [String])
 allExports = (qualify . filter ((&&) <$> hasFunctions <*> isLibrary) <$>)
-                        . mapM exportsGet
+             . mapM exportsGet
   where qualify ys   = ( unlines ["import qualified " <> q | (q,_) <- ys]
                        , [q <> "." <> fromName n | (q,ns) <- ys, n <- ns])
         isLibrary    = (/="Main") . fst
         hasFunctions = not . null . snd
 
 -- | List of haskell functions which get querried for their arity.
-arityFormat :: [Text] -> Text
-arityFormat ts = T.intercalate ","
-                 . map (\x -> "(" <> T.justifyLeft padding ' ' ("\"" <> x <> "\",")
-                              <> "arity " <> x <> ")")
-                 $ ts
-  where padding = maximum [T.length t | t <- ts] + 4
+arityFormat :: [String] -> String
+arityFormat = ("++"++) . prettyPrint
+              . listE . map (\x -> tuple [strE x, app (function "arity")
+                                                      (function x)])
 
 -- | Retrieve the name and a list of exported functions of a haskell module.
 -- It should use 'parseFileContents' to take pragmas into account.
