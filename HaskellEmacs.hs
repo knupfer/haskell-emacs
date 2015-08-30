@@ -82,8 +82,7 @@ getDocumentation funs code =
 
 -- | Takes a function (described in a Text) and feeds it a lisp.
 run :: Text -> Lisp -> Result Lisp
-run t l = maybe (Error "Function not found")
-                ($l) $ M.lookup t dispatcher
+run t l = maybe (Error "Function not found") ($l) $ M.lookup t dispatcher
 
 formatResult :: Int -> Result Lisp -> B.ByteString
 formatResult i l = case l of
