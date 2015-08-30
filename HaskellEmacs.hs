@@ -42,6 +42,7 @@ main = do printer <- newChan
 
 -- | Recursively evaluate a lisp in parallel, using functions defined
 -- by the user (see documentation of the emacs function `haskell-emacs-init').
+{-@ Lazy traverseLisp @-}
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp l = case l of
   List (Symbol x:xs) -> sym (T.filter (/='\\') x) xs
@@ -56,6 +57,7 @@ traverseLisp l = case l of
 
 -- | Takes a stream of instructions and returns lazy list of
 -- results.
+{-@ Lazy fullParse @-}
 fullParse :: B.ByteString -> [B.ByteString]
 fullParse a = case parseInput a of A.Done a' b -> b : fullParse a'
                                    A.Fail {}   -> []
@@ -69,6 +71,7 @@ parseInput = A.parse $ do
   return . formatResult i . traverseLisp $ l
 
 -- | Scrape the documentation of haskell functions to serve it in emacs.
+{-@ getDocumentation :: x:[Text] -> Text -> {v:[Text] | len x == len v} @-}
 getDocumentation :: [Text] -> Text -> [Text]
 getDocumentation funs code =
   map ( \f -> T.unlines . (++) (filter (T.isPrefixOf (f <> " ::")) ls ++ [""])
@@ -84,6 +87,7 @@ getDocumentation funs code =
 run :: Text -> Lisp -> Result Lisp
 run t l = maybe (Error "Function not found") ($l) $ M.lookup t dispatcher
 
+{-@ formatResult :: Nat -> Result Lisp -> B.ByteString @-}
 formatResult :: Int -> Result Lisp -> B.ByteString
 formatResult i l = case l of
       Success s -> f [ ] $ encode s
