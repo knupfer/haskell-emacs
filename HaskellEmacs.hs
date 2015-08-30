@@ -136,10 +136,16 @@ formatCode (imports, exports, arities) = inject "arity"  arities
 -- | Import statement of all modules and all their qualified functions.
 allExports :: [String] -> Either String (String, [String])
 allExports = (qualify . filter ((&&) <$> hasFunctions <*> isLibrary) <$>)
-             . mapM exportsGet
-  where qualify ys   = ( unlines ["import qualified " <> q | (q,_) <- ys]
-                       , [q <> "." <> fromName n | (q,ns) <- ys, n <- ns])
-        isLibrary    = (/="Main") . fst
+             .  mapM exportsGet
+  where qualify ys   = ( unlines [prettyPrint $ ImportDecl noLoc q
+                                                True
+                                                False
+                                                False
+                                                Nothing
+                                                Nothing
+                                                Nothing | (q,_) <- ys]
+                       , [prettyPrint $ qvar q n | (q,ns) <- ys, n <- ns])
+        isLibrary    = (/=ModuleName "Main") . fst
         hasFunctions = not . null . snd
 
 -- | List of haskell functions which get querried for their arity.
@@ -150,9 +156,9 @@ arityFormat = ("++"++) . prettyPrint
 
 -- | Retrieve the name and a list of exported functions of a haskell module.
 -- It should use 'parseFileContents' to take pragmas into account.
-exportsGet :: String -> Either String (String, [Name])
+exportsGet :: String -> Either String (ModuleName, [Name])
 exportsGet content = case parseFileContents content of
-  ParseOk (Module _ (ModuleName name) _ _ header _ decls)
+  ParseOk (Module _ name _ _ header _ decls)
     -> Right . (,) name $ maybe (exportsFromDecls decls)
                                  exportsFromHeader header
   ParseFailed _ msg -> Left msg
