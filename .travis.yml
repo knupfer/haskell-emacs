@@ -1,0 +1,42 @@
+language: bash
+
+matrix:
+  include:
+    - env: GHCVER=head CABALVER=head
+      addons: {apt: {packages: [cabal-install-head,ghc-head,happy-1.19.5,ocaml],   sources: [hvr-ghc]}}
+    - env: GHCVER=7.10.2 CABALVER=1.22
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
+    - env: GHCVER=7.8.4 CABALVER=1.18
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.6.3 CABALVER=1.18
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.6.3,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+
+  allow_failures:
+   - env: GHCVER=head CABALVER=head
+
+install:
+ - export PREFIX=/home/travis/build/knupfer/haskell-emacs
+ - export HAPPYVER=1.19.5
+ - export PATH=$PREFIX/emacs-24/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ -
+ - git clone --depth=1 --branch=emacs-24 https://github.com/emacs-mirror/emacs $PREFIX/emacs-24
+ - cd $PREFIX/emacs-24
+ - ./autogen.sh
+ - ./configure --without-makeinfo --with-xpm=no --with-gif=no
+ - make
+ -
+ - cabal update
+ - |
+   if [ $GHCVER = "7.6.3" ] || [ $GHCVER = "7.8.4" ]; then
+     cabal install atto-lisp
+   else
+     cabal install --allow-newer=deepseq,blaze-builder atto-lisp
+   fi
+ - cabal install haskell-src-exts parallel utf8-string
+ -
+ - cd $PREFIX
+
+script:
+ - ghc -O2 -Wall --make HaskellEmacs.hs
+ - emacs --batch -Q -l test/haskell-emacs-test.el
+ - emacs --batch -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)"
