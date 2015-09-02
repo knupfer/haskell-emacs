@@ -82,6 +82,16 @@ install:
    fi
  -
  - cd $PREFIX
+ -
+ - which emacs
+ - emacs           --version
+ - happy           --version
+ - hlint           --version
+ - stylish-haskell --version
+ - ghc             --version
+ - cabal           --version
+ - if [ $GHCVER = "7.10.2" ]; then liquid --version; fi
+ - if [ $GHCVER = "7.10.2" ]; then z3     --version; fi
 
 script:
  - ghc -O2 -Wall --make HaskellEmacs.hs
