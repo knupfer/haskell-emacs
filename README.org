@@ -1,4 +1,5 @@
 [[http://melpa.org/#/haskell-emacs][file:http://melpa.org/packages/haskell-emacs-badge.svg]]
+[[https://travis-ci.org/knupfer/haskell-emacs][file:https://travis-ci.org/knupfer/haskell-emacs.svg]]
 
 * What is it?
 =haskell-emacs= is a library which allows the extension of Emacs using
