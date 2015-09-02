@@ -19,7 +19,6 @@
 
 (defun haskell-emacs-run-tests ()
   (let ((err)
-        (err-msg)
         (nothing)
         (long)
         (nothingMulti)
@@ -32,10 +31,9 @@
     (mapc
      (lambda (x)
        (unless (equal (eval (car x)) (cadr x))
-         (setq err t
-               err-msg (concat err-msg (format "%s" (car x)) "\n"
-                               "    results in: " (format "%s" (eval (car x))) "\n"
-                               "    instead of: " (format "%s" (cadr x)) "\n"))))
+         (setq err (concat err (format "%s" (car x)) "\n"
+                           "    results in: " (format "%s" (eval (car x))) "\n"
+                           "    instead of: " (format "%s" (cadr x)) "\n"))))
      '(((HaskellEmacsTest.nothing "a") "")
        ((HaskellEmacsTest.unicode) "ˈiːmæksإيماكسایمکس이맥스И́макс")
        ((HaskellEmacsTest.unicodeText) "ˈiːmæksإيماكسایمکس이맥스И́макс")
@@ -70,10 +68,11 @@
                             (HaskellEmacsTest.multiply-async 1 9)
                             (HaskellEmacsTest.multiply-async 10 15)))
         (8 9 150))))
+    (if err (error err)
+        (message "No errors were found.\n"))
     (setq nothing (/ (car (benchmark-run 5000 (HaskellEmacsTest.nothing "")))
                      5000))
-    (setq long (/ (car (benchmark-run 500 (HaskellEmacsTest.longAnswer 13)))
-                  (expt 2 13) 500))
+    (message "Sync  fun call : " (format "%.1e" nothing))
     (setq nothingMulti
           (/ (car (benchmark-run 1000
                     (mapc 'eval (list (HaskellEmacsTest.nothing-async "a")
@@ -88,6 +87,10 @@
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")))))
              10000))
+    (message "Async fun call : " (format "%.1e" nothingMulti))
+    (setq long (/ (car (benchmark-run 500 (HaskellEmacsTest.longAnswer 13)))
+                  (expt 2 13) 500))
+    (message "Costs per char : " (format "%.1e" long))
     (setq serial (car (benchmark-run 4
                         (HaskellEmacsTest.doWork 15000000 0 0))))
     (setq parallel
@@ -97,6 +100,7 @@
                                 (HaskellEmacsTest.doWork-async 15000000 0 0)
                                 (HaskellEmacsTest.doWork-async 15000000 0 0)
                                 (HaskellEmacsTest.doWork-async 15000000 0 0))))))
+    (message "Parallel speed : " (format "x%.2f" (/ serial parallel)))
     (setq fuse
           (car (benchmark-run 1
                  (HaskellEmacsTest.multiply
@@ -106,16 +110,8 @@
                   (HaskellEmacsTest.multiply
                    (HaskellEmacsTest.doWork 15000000 0 0)
                    (HaskellEmacsTest.doWork 15000000 0 0))))))
-    (unless err (setq err-msg "No errors were found."))
-    (let ((result (concat "\n" err-msg "\n\n"
-                          "Sync  fun call : " (format "%.1e" nothing) "\n"
-                          "Async fun call : " (format "%.1e" nothingMulti) "\n"
-                          "Costs per char : " (format "%.1e" long) "\n"
-                          "Parallel speed : " (format "x%.2f" (/ serial parallel)) "\n"
-                          "Nesting  speed : " (format "x%.2f" (/ serial fuse)) "\n"
-                          "Total duration : " (format "%s" (round (float-time (time-subtract (current-time) now)))))))
-      (if err (error result)
-        (message result)))))
+    (message "Nesting  speed : " (format "x%.2f" (/ serial fuse)))
+    (message "Total duration : " (format "%s" (round (float-time (time-subtract (current-time) now)))))))
 
 (provide 'haskell-emacs-test)
 ;;; haskell-emacs-test.el ends here
