@@ -2,25 +2,46 @@ language: bash
 
 matrix:
   include:
-    - env: GHCVER=head CABALVER=head
+    - env: GHCVER=head EMACSVER=head CABALVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head,happy-1.19.5,ocaml],   sources: [hvr-ghc]}}
-    - env: GHCVER=7.10.2 CABALVER=1.22
+    - env: GHCVER=7.10.2 EMACSVER=head CABALVER=1.22
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
-    - env: GHCVER=7.8.4 CABALVER=1.18
+    - env: GHCVER=7.10.2 EMACSVER=24 CABALVER=1.22
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
+    - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
       addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
-    - env: GHCVER=7.6.3 CABALVER=1.18
+    - env: GHCVER=7.8.4 EMACSVER=24 CABALVER=1.18
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.6.3 EMACSVER=24 CABALVER=1.18
       addons: {apt: {packages: [cabal-install-1.18,ghc-7.6.3,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
 
   allow_failures:
-   - env: GHCVER=head CABALVER=head
+   - env: GHCVER=head EMACSVER=head CABALVER=head
+   - env: GHCVER=7.10.2 EMACSVER=head CABALVER=1.22
+   - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
+
+before_install:
+ -
+ - echo    ╔═══════════════════════════════════════════════════════════════════════════╗
+ - echo    ║ WARNING! Tests are not run with emacs23 because of --batch bugs.          ║
+ - echo    ║          It should work with emacs23, to test it call it without --batch. ║
+ - echo    ║          This is unfortunately not supported on travis-ci.                ║
+ - echo    ║ emacs -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)" ║
+ - echo    ╚═══════════════════════════════════════════════════════════════════════════╝
+ -
 
 install:
  - export PREFIX=/home/travis/build/knupfer/haskell-emacs
  - export HAPPYVER=1.19.5
- - export PATH=$PREFIX/emacs-24/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - export PATH=$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  -
- - git clone --depth=1 --branch=emacs-24 https://github.com/emacs-mirror/emacs $PREFIX/emacs-24
- - cd $PREFIX/emacs-24
+ - |
+   if [ $EMACSVER = "head" ]; then
+     git clone --depth=1 https://github.com/emacs-mirror/emacs $PREFIX/emacs-head
+   else
+     git clone --depth=1 --branch=emacs-$EMACSVER https://github.com/emacs-mirror/emacs $PREFIX/emacs-$EMACSVER
+   fi
+ - cd $PREFIX/emacs-$EMACSVER
  - ./autogen.sh
  - ./configure --without-makeinfo --with-xpm=no --with-gif=no
  - make
