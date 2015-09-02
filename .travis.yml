@@ -20,6 +20,13 @@ matrix:
    - env: GHCVER=7.10.2 EMACSVER=head CABALVER=1.22
    - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
 
+cache:
+  directories:
+  - z3
+  - liquid
+  - emacs-24
+  - haskell-utils
+
 before_install:
  -
  - echo    ╔═══════════════════════════════════════════════════════════════════════════╗
@@ -36,15 +43,18 @@ install:
  - export PATH=$PREFIX/liquid/liquidhaskell/.cabal-sandbox/bin:$PREFIX/z3/build:$PREFIX/haskell-utils/.cabal-sandbox/bin:$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  -
  - |
-   if [ $EMACSVER = "head" ]; then
-     git clone --depth=1 https://github.com/emacs-mirror/emacs $PREFIX/emacs-head
-   else
-     git clone --depth=1 --branch=emacs-$EMACSVER https://github.com/emacs-mirror/emacs $PREFIX/emacs-$EMACSVER
+   if [ ! -e $PREFIX/emacs-$EMACSVER/src/emacs ]; then
+     if [ $EMACSVER = "head" ]; then
+       git clone --depth=1 https://github.com/emacs-mirror/emacs $PREFIX/emacs-head
+     else
+       git clone --depth=1 --branch=emacs-$EMACSVER https://github.com/emacs-mirror/emacs $PREFIX/emacs-$EMACSVER
+     fi
+
+     cd $PREFIX/emacs-$EMACSVER
+     ./autogen.sh
+     ./configure --without-makeinfo --with-xpm=no --with-gif=no
+     make
    fi
- - cd $PREFIX/emacs-$EMACSVER
- - ./autogen.sh
- - ./configure --without-makeinfo --with-xpm=no --with-gif=no
- - make
  -
  - cabal update
  - |
@@ -55,13 +65,16 @@ install:
    fi
  - cabal install haskell-src-exts parallel utf8-string
  -
- - mkdir -p $PREFIX/haskell-utils
- - cd $PREFIX/haskell-utils
- - cabal sandbox init
- - cabal install hlint stylish-haskell
+ - |
+   if [ ! -e $PREFIX/haskell-utils/.cabal-sandbox/bin/hlint ]; then
+     mkdir -p $PREFIX/haskell-utils
+     cd $PREFIX/haskell-utils
+     cabal sandbox init
+     cabal install hlint stylish-haskell
+   fi
  -
  - |
-   if [ $GHCVER = "7.10.2" ]; then
+   if [ $GHCVER = "7.10.2" ] && [ ! -e $PREFIX/z3/build/z3 ]; then
      git clone https://github.com/z3prover/z3 $PREFIX/z3
      cd $PREFIX/z3
      python scripts/mk_make.py
@@ -70,7 +83,7 @@ install:
    fi
  -
  - |
-   if [ $GHCVER = "7.10.2" ]; then
+   if [ $GHCVER = "7.10.2" ] && [ ! -e $PREFIX/liquid/liquidhaskell/.cabal-sandbox/bin/liquid ]; then
      mkdir -p $PREFIX/liquid
      cd $PREFIX/liquid
      git clone https://github.com/ucsd-progsys/liquid-fixpoint
