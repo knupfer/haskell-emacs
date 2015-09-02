@@ -33,7 +33,7 @@ before_install:
 install:
  - export PREFIX=/home/travis/build/knupfer/haskell-emacs
  - export HAPPYVER=1.19.5
- - export PATH=$PREFIX/haskell-utils/.cabal-sandbox/bin:$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - export PATH=$PREFIX/liquid/liquidhaskell/.cabal-sandbox/bin:$PREFIX/z3/build:$PREFIX/haskell-utils/.cabal-sandbox/bin:$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  -
  - |
    if [ $EMACSVER = "head" ]; then
@@ -60,10 +60,32 @@ install:
  - cabal sandbox init
  - cabal install hlint stylish-haskell
  -
+ - |
+   if [ $GHCVER = "7.10.2" ]; then
+     git clone https://github.com/z3prover/z3 $PREFIX/z3
+     cd $PREFIX/z3
+     python scripts/mk_make.py
+     cd build
+     make
+   fi
+ -
+ - |
+   if [ $GHCVER = "7.10.2" ]; then
+     mkdir -p $PREFIX/liquid
+     cd $PREFIX/liquid
+     git clone https://github.com/ucsd-progsys/liquid-fixpoint
+     git clone https://github.com/ucsd-progsys/liquidhaskell
+     cd liquidhaskell
+     cabal sandbox init
+     cabal sandbox add-source ../liquid-fixpoint/
+     cabal install
+   fi
+ -
  - cd $PREFIX
 
 script:
  - ghc -O2 -Wall --make HaskellEmacs.hs
+ - if [ $GHCVER = "7.10.2" ]; then liquid --totality HaskellEmacs.hs; fi
  - hlint HaskellEmacs.hs
  - diff HaskellEmacs.hs <(stylish-haskell HaskellEmacs.hs)
  - emacs --batch -Q -l test/haskell-emacs-test.el
