@@ -2,12 +2,24 @@
 
 ;;; Commentary:
 
-;; Add this directory to your `load-path', reinitialize haskell-emacs
-;; and evaluate this buffer.
+;; To execute this test-suite and benchmark-suite:
+;; emacs -Q --batch -l haskell-emacs-test.el
+;; emacs -Q --batch -l haskell-emacs-test.el --eval="(haskell-emacs-run-tests)"
 
 ;;; Code:
-(with-no-warnings
+
+(let ((load-dir (file-name-directory load-file-name)))
+  (add-to-list 'load-path load-dir)
+  (add-to-list 'load-path (progn (string-match ".*haskell-emacs/" load-dir)
+                                 (match-string 0 load-dir))))
+
+(require 'haskell-emacs)
+
+(haskell-emacs-init)
+
+(defun haskell-emacs-run-tests ()
   (let ((err)
+        (err-msg)
         (nothing)
         (long)
         (nothingMulti)
@@ -20,9 +32,10 @@
     (mapc
      (lambda (x)
        (unless (equal (eval (car x)) (cadr x))
-         (setq err (concat err (format "%s" (car x)) "\n"
-                           "    results in: " (format "%s" (eval (car x))) "\n"
-                           "    instead of: " (format "%s" (cadr x)) "\n"))))
+         (setq err t
+               err-msg (concat err-msg (format "%s" (car x)) "\n"
+                               "    results in: " (format "%s" (eval (car x))) "\n"
+                               "    instead of: " (format "%s" (cadr x)) "\n"))))
      '(((HaskellEmacsTest.nothing "a") "")
        ((HaskellEmacsTest.unicode) "ˈiːmæksإيماكسایمکس이맥스И́макс")
        ((HaskellEmacsTest.unicodeText) "ˈiːmæksإيماكسایمکس이맥스И́макс")
@@ -57,12 +70,12 @@
                             (HaskellEmacsTest.multiply-async 1 9)
                             (HaskellEmacsTest.multiply-async 10 15)))
         (8 9 150))))
-    (setq nothing (/ (car (benchmark-run 10000 (HaskellEmacsTest.nothing "")))
-                     10000))
-    (setq long (/ (car (benchmark-run 1000 (HaskellEmacsTest.longAnswer 13)))
-                  (expt 2 13) 1000))
+    (setq nothing (/ (car (benchmark-run 5000 (HaskellEmacsTest.nothing "")))
+                     5000))
+    (setq long (/ (car (benchmark-run 500 (HaskellEmacsTest.longAnswer 13)))
+                  (expt 2 13) 500))
     (setq nothingMulti
-          (/ (car (benchmark-run 2000
+          (/ (car (benchmark-run 1000
                     (mapc 'eval (list (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")
@@ -74,7 +87,7 @@
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")))))
-             20000))
+             10000))
     (setq serial (car (benchmark-run 4
                         (HaskellEmacsTest.doWork 15000000 0 0))))
     (setq parallel
@@ -93,16 +106,16 @@
                   (HaskellEmacsTest.multiply
                    (HaskellEmacsTest.doWork 15000000 0 0)
                    (HaskellEmacsTest.doWork 15000000 0 0))))))
-    (unless err
-      (setq err "No errors were found."))
-    (let ((result (concat err "\n\n"
+    (unless err (setq err-msg "No errors were found."))
+    (let ((result (concat "\n" err-msg "\n\n"
                           "Sync  fun call : " (format "%.1e" nothing) "\n"
                           "Async fun call : " (format "%.1e" nothingMulti) "\n"
                           "Costs per char : " (format "%.1e" long) "\n"
                           "Parallel speed : " (format "x%.2f" (/ serial parallel)) "\n"
-                          "Branch speed   : " (format "x%.2f" (/ serial fuse)) "\n"
-                          "Total time     : " (format "%s" (float-time (time-subtract (current-time) now))))))
-      (display-message-or-buffer result))))
+                          "Nesting  speed : " (format "x%.2f" (/ serial fuse)) "\n"
+                          "Total duration : " (format "%s" (round (float-time (time-subtract (current-time) now)))))))
+      (if err (error result)
+        (message result)))))
 
 (provide 'haskell-emacs-test)
 ;;; haskell-emacs-test.el ends here
