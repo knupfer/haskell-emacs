@@ -33,7 +33,7 @@ before_install:
 install:
  - export PREFIX=/home/travis/build/knupfer/haskell-emacs
  - export HAPPYVER=1.19.5
- - export PATH=$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - export PATH=$PREFIX/haskell-utils/.cabal-sandbox/bin:$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  -
  - |
    if [ $EMACSVER = "head" ]; then
@@ -55,9 +55,16 @@ install:
    fi
  - cabal install haskell-src-exts parallel utf8-string
  -
+ - mkdir -p $PREFIX/haskell-utils
+ - cd $PREFIX/haskell-utils
+ - cabal sandbox init
+ - cabal install hlint stylish-haskell
+ -
  - cd $PREFIX
 
 script:
  - ghc -O2 -Wall --make HaskellEmacs.hs
+ - hlint HaskellEmacs.hs
+ - diff HaskellEmacs.hs <(stylish-haskell HaskellEmacs.hs)
  - emacs --batch -Q -l test/haskell-emacs-test.el
  - emacs --batch -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)"
