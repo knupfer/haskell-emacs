@@ -72,7 +72,8 @@
         (message "No errors were found.\n"))
     (setq nothing (/ (car (benchmark-run 5000 (HaskellEmacsTest.nothing "")))
                      5000))
-    (message "Sync  fun call : " (format "%.1e" nothing))
+    (message (concat "Sync  fun call : "
+                     (format "%.1e" nothing)))
     (setq nothingMulti
           (/ (car (benchmark-run 1000
                     (mapc 'eval (list (HaskellEmacsTest.nothing-async "a")
@@ -87,12 +88,16 @@
                                       (HaskellEmacsTest.nothing-async "a")
                                       (HaskellEmacsTest.nothing-async "a")))))
              10000))
-    (message "Async fun call : " (format "%.1e" nothingMulti))
+    (message (concat "Async fun call : "
+                     (format "%.1e" nothingMulti)))
     (setq long (/ (car (benchmark-run 500 (HaskellEmacsTest.longAnswer 13)))
                   (expt 2 13) 500))
-    (message "Costs per char : " (format "%.1e" long))
+    (message (concat "Costs per char : "
+                     (format "%.1e" long)))
     (setq serial (car (benchmark-run 4
                         (HaskellEmacsTest.doWork 15000000 0 0))))
+    (message (concat "Sync  workload : "
+                     (format "%.2f" serial)))
     (setq parallel
           (car (benchmark-run 1
                  (mapcar 'eval (list
@@ -100,7 +105,9 @@
                                 (HaskellEmacsTest.doWork-async 15000000 0 0)
                                 (HaskellEmacsTest.doWork-async 15000000 0 0)
                                 (HaskellEmacsTest.doWork-async 15000000 0 0))))))
-    (message "Parallel speed : " (format "x%.2f" (/ serial parallel)))
+    (message (concat "Parallel speed : "
+                     (format "%.2f" parallel)
+                     (format " (x%.2f)" (/ serial parallel))))
     (setq fuse
           (car (benchmark-run 1
                  (HaskellEmacsTest.multiply
@@ -110,8 +117,11 @@
                   (HaskellEmacsTest.multiply
                    (HaskellEmacsTest.doWork 15000000 0 0)
                    (HaskellEmacsTest.doWork 15000000 0 0))))))
-    (message "Nesting  speed : " (format "x%.2f" (/ serial fuse)))
-    (message "Total duration : " (format "%s" (round (float-time (time-subtract (current-time) now)))))))
+    (message (concat "Nesting  speed : "
+                     (format "%.2f" fuse)
+                     (format " (x%.2f)" (/ serial fuse))))
+    (message (concat "Total duration : "
+                     (format "%s" (round (float-time (time-subtract (current-time) now))))))))
 
 (provide 'haskell-emacs-test)
 ;;; haskell-emacs-test.el ends here
