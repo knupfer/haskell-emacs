@@ -1,0 +1,115 @@
+language: bash
+
+matrix:
+  include:
+    - env: GHCVER=head EMACSVER=head CABALVER=head
+      addons: {apt: {packages: [cabal-install-head,ghc-head,happy-1.19.5,ocaml],   sources: [hvr-ghc]}}
+    - env: GHCVER=7.10.2 EMACSVER=head CABALVER=1.22
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
+    - env: GHCVER=7.10.2 EMACSVER=24 CABALVER=1.22
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
+    - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.8.4 EMACSVER=24 CABALVER=1.18
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.6.3 EMACSVER=24 CABALVER=1.18
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.6.3,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+
+  allow_failures:
+   - env: GHCVER=head EMACSVER=head CABALVER=head
+   - env: GHCVER=7.10.2 EMACSVER=head CABALVER=1.22
+   - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
+
+cache:
+  directories:
+  - z3
+  - liquid
+  - emacs-24
+  - haskell-utils
+
+before_install:
+ -
+ - echo    ╔═══════════════════════════════════════════════════════════════════════════╗
+ - echo    ║ WARNING! Tests are not run with emacs23 because of --batch bugs.          ║
+ - echo    ║          It should work with emacs23, to test it call it without --batch. ║
+ - echo    ║          This is unfortunately not supported on travis-ci.                ║
+ - echo    ║ emacs -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)" ║
+ - echo    ╚═══════════════════════════════════════════════════════════════════════════╝
+ -
+
+install:
+ - export PREFIX=/home/travis/build/knupfer/haskell-emacs
+ - export HAPPYVER=1.19.5
+ - export PATH=$PREFIX/liquid/liquidhaskell/.cabal-sandbox/bin:$PREFIX/z3/build:$PREFIX/haskell-utils/.cabal-sandbox/bin:$PREFIX/emacs-$EMACSVER/src:/opt/happy/$HAPPYVER/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ -
+ - |
+   if [ ! -e $PREFIX/emacs-$EMACSVER/src/emacs ]; then
+     if [ $EMACSVER = "head" ]; then
+       git clone --depth=1 https://github.com/emacs-mirror/emacs $PREFIX/emacs-head
+     else
+       git clone --depth=1 --branch=emacs-$EMACSVER https://github.com/emacs-mirror/emacs $PREFIX/emacs-$EMACSVER
+     fi
+
+     cd $PREFIX/emacs-$EMACSVER
+     ./autogen.sh
+     ./configure --without-makeinfo --with-xpm=no --with-gif=no
+     make
+   fi
+ -
+ - cabal update
+ - |
+   if [ $GHCVER = "7.6.3" ] || [ $GHCVER = "7.8.4" ]; then
+     cabal install atto-lisp
+   else
+     cabal install --allow-newer=deepseq,blaze-builder atto-lisp
+   fi
+ - cabal install haskell-src-exts parallel utf8-string
+ -
+ - |
+   if [ ! -e $PREFIX/haskell-utils/.cabal-sandbox/bin/hlint ]; then
+     mkdir -p $PREFIX/haskell-utils
+     cd $PREFIX/haskell-utils
+     cabal sandbox init
+     cabal install hlint stylish-haskell
+   fi
+ -
+ - |
+   if [ $GHCVER = "7.10.2" ] && [ ! -e $PREFIX/z3/build/z3 ]; then
+     git clone https://github.com/z3prover/z3 $PREFIX/z3
+     cd $PREFIX/z3
+     python scripts/mk_make.py
+     cd build
+     make
+   fi
+ -
+ - |
+   if [ $GHCVER = "7.10.2" ] && [ ! -e $PREFIX/liquid/liquidhaskell/.cabal-sandbox/bin/liquid ]; then
+     mkdir -p $PREFIX/liquid
+     cd $PREFIX/liquid
+     git clone https://github.com/ucsd-progsys/liquid-fixpoint
+     git clone https://github.com/ucsd-progsys/liquidhaskell
+     cd liquidhaskell
+     cabal sandbox init
+     cabal sandbox add-source ../liquid-fixpoint/
+     cabal install
+   fi
+ -
+ - cd $PREFIX
+ -
+ - which emacs
+ - emacs           --version
+ - happy           --version
+ - hlint           --version
+ - stylish-haskell --version
+ - ghc             --version
+ - cabal           --version
+ - if [ $GHCVER = "7.10.2" ]; then liquid --version; fi
+ - if [ $GHCVER = "7.10.2" ]; then z3     --version; fi
+
+script:
+ - ghc -O2 -Wall --make HaskellEmacs.hs
+ - if [ $GHCVER = "7.10.2" ]; then liquid --totality HaskellEmacs.hs; fi
+ - hlint HaskellEmacs.hs
+ - diff HaskellEmacs.hs <(stylish-haskell HaskellEmacs.hs)
+ - emacs --batch -Q -l test/haskell-emacs-test.el
+ - emacs --batch -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)"
