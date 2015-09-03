@@ -58,7 +58,7 @@
        ((HaskellEmacsTest.squareRoot -4) NaN)
        ((HaskellEmacsTest.bothTrue nil t) nil)
        ((HaskellEmacsTest.bothTrue t t) t)
-       ((HaskellEmacsTest.multiply 4 5) 20)
+       ((HaskellEmacsTest.multiply 4 5) 20.0)
        ((HaskellEmacsTest.takeSome 4 "abcde") "abcd")
        ((HaskellEmacsTest.switch '("abc" 4)) (4 "abc"))
        ((HaskellEmacsTest.concatFst '(("a" 1) ("b" 2) ("c" 3))) "abc")
@@ -67,7 +67,7 @@
        ((mapcar 'eval (list (HaskellEmacsTest.multiply-async 2 4)
                             (HaskellEmacsTest.multiply-async 1 9)
                             (HaskellEmacsTest.multiply-async 10 15)))
-        (8 9 150))))
+        (8.0 9.0 150.0))))
     (if err (error err)
         (message "No errors were found.\n"))
     (setq nothing (/ (car (benchmark-run 15000 (HaskellEmacsTest.nothing "")))
@@ -94,17 +94,22 @@
                   (expt 2 13) 1000))
     (message (concat "Costs per char : "
                      (format "%.1e" long)))
-    (setq serial (car (benchmark-run 4
-                        (HaskellEmacsTest.doWork 7500000 0 0))))
+    (setq serial (car (benchmark-run 8
+                        (HaskellEmacsTest.doNBody 10000000))))
     (message (concat "Sync  workload : "
                      (format "%.2f" serial)))
     (setq parallel
           (car (benchmark-run 1
                  (mapcar 'eval (list
-                                (HaskellEmacsTest.doWork-async 7500000 0 0)
-                                (HaskellEmacsTest.doWork-async 7500000 0 0)
-                                (HaskellEmacsTest.doWork-async 7500000 0 0)
-                                (HaskellEmacsTest.doWork-async 7500000 0 0))))))
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                ;;
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                (HaskellEmacsTest.doNBody-async 10000000)
+                                (HaskellEmacsTest.doNBody-async 10000000))))))
     (message (concat "Parallel speed : "
                      (format "%.2f" parallel)
                      (format " (x%.2f)" (/ serial parallel))))
@@ -112,11 +117,19 @@
           (car (benchmark-run 1
                  (HaskellEmacsTest.multiply
                   (HaskellEmacsTest.multiply
-                   (HaskellEmacsTest.doWork 7500000 0 0)
-                   (HaskellEmacsTest.doWork 7500000 0 0))
+                   (HaskellEmacsTest.multiply
+                    (HaskellEmacsTest.doNBody 10000000)
+                    (HaskellEmacsTest.doNBody 10000000))
+                   (HaskellEmacsTest.multiply
+                    (HaskellEmacsTest.doNBody 10000000)
+                    (HaskellEmacsTest.doNBody 10000000)))
                   (HaskellEmacsTest.multiply
-                   (HaskellEmacsTest.doWork 7500000 0 0)
-                   (HaskellEmacsTest.doWork 7500000 0 0))))))
+                   (HaskellEmacsTest.multiply
+                    (HaskellEmacsTest.doNBody 10000000)
+                    (HaskellEmacsTest.doNBody 10000000))
+                   (HaskellEmacsTest.multiply
+                    (HaskellEmacsTest.doNBody 10000000)
+                    (HaskellEmacsTest.doNBody 10000000)))))))
     (message (concat "Nesting  speed : "
                      (format "%.2f" fuse)
                      (format " (x%.2f)" (/ serial fuse))))

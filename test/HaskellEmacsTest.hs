@@ -2,7 +2,9 @@
 
 module HaskellEmacsTest where
 
-import qualified Data.Text as T
+import qualified Data.Text        as T
+import           External.NBody
+import           System.IO.Unsafe
 
 -- String
 
@@ -71,7 +73,7 @@ squareRoot = sqrt
 bothTrue :: Bool -> Bool -> Bool
 bothTrue = (&&)
 
-multiply :: Int -> Int -> Int
+multiply :: Double -> Double -> Double
 multiply a b = a * b
 
 takeSome :: Int -> String -> String
@@ -94,5 +96,5 @@ nthFib :: Int -> Int
 nthFib = (!!) fibs
   where fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
 
-doWork :: Int -> Double -> Double -> Double
-doWork x y z = foldr (+) y $ take x [0.0000001,z..]
+doNBody :: Integer -> Double
+doNBody = unsafePerformIO . nbody
