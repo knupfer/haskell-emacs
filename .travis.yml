@@ -110,6 +110,6 @@ script:
  - ghc -O2 -Wall --make HaskellEmacs.hs
  - if [ $GHCVER = "7.10.2" ]; then liquid --totality HaskellEmacs.hs; fi
  - hlint HaskellEmacs.hs
- - diff HaskellEmacs.hs <(stylish-haskell HaskellEmacs.hs)
+ - diff -s HaskellEmacs.hs <(stylish-haskell HaskellEmacs.hs)
  - emacs --batch -Q -l test/haskell-emacs-test.el
  - emacs --batch -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)"
