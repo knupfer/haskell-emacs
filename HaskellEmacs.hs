@@ -15,12 +15,12 @@ import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (mapMaybe)
+import           Data.Maybe                       (mapMaybe, maybeToList)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
-import           Language.Haskell.Exts            hiding (List, Symbol, name,
-                                                   sym)
+import           Language.Haskell.Exts            hiding (List, String, Symbol,
+                                                   name, sym)
 import           Language.Haskell.Exts.SrcLoc
 import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
 import           System.IO                        (hFlush, stdout)
@@ -89,10 +89,13 @@ run t l = maybe (Error "Function not found") ($l) $ M.lookup t dispatcher
 
 {-@ formatResult :: Nat -> Result Lisp -> B.ByteString @-}
 formatResult :: Int -> Result Lisp -> B.ByteString
-formatResult i l = case l of
-      Success s -> f [ ] $ encode s
-      Error s   -> f [1] $ B.pack s
-  where f err t = encode ([B.length t, i] ++ err) <> t
+formatResult i l = f $ case l of
+      Success s -> (Just $ num i, encode s)
+      Error s   -> (Nothing     , errorE s)
+  where f (procNum, t) = encList (num (B.length t):maybeToList procNum) <> t
+        errorE msg     = encList [Symbol "error", String $ T.pack msg]
+        encList        = encode . List
+        num            = Number . fromIntegral
 
 -- | Map of available functions which get transformed to work on lisp.
 dispatcher :: M.Map Text (Lisp -> Result Lisp)
