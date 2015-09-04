@@ -432,9 +432,14 @@ Read C-h f haskell-emacs-init for more instructions")
                 "parallel"
                 "utf8-string"))
         (message "Installing atto-lisp...")
-        (unless (= 0 (call-process "cabal" nil t nil "install"
-                                 "--allow-newer=deepseq,blaze-builder"
-                                 "atto-lisp"))
+        (unless (= 0 (if (version< (substring (shell-command-to-string
+                                               "ghc --numeric-version") 0 -1)
+                                   "7.10")
+                         (call-process "cabal" nil t nil "install"
+                                       "atto-lisp")
+                       (call-process "cabal" nil t nil "install"
+                                     "--allow-newer=deepseq,blaze-builder"
+                                     "atto-lisp")))
           (error (buffer-string)))))
     (if example
         (with-temp-buffer
