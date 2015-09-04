@@ -396,7 +396,10 @@ Read C-h f haskell-emacs-init for more instructions")
 
 (defun haskell-emacs--install-dialog ()
   "Run the installation dialog."
-  (let* ((sandbox (yes-or-no-p "Create a cabal sandbox? "))
+  (let* ((sandbox (unless (version< (substring (shell-command-to-string
+                                                "cabal --numeric-version") 0 -1)
+                                "1.18")
+                    (yes-or-no-p "Create a cabal sandbox? ")))
          (install (yes-or-no-p "Cabal install the dependencies? "))
          (update  (when install (yes-or-no-p "Update cabal packages? ")))
          (example (yes-or-no-p "Add a simple example? ")))
