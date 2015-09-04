@@ -35,6 +35,9 @@
 ;; of usage.
 
 ;;; Code:
+
+(require 'cl-macs)
+
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
   :group 'haskell)
@@ -396,54 +399,40 @@ Read C-h f haskell-emacs-init for more instructions")
 
 (defun haskell-emacs--install-dialog ()
   "Run the installation dialog."
-  (let* ((sandbox (unless (version< (substring (shell-command-to-string
-                                                "cabal --numeric-version") 0 -1)
-                                "1.18")
-                    (yes-or-no-p "Create a cabal sandbox? ")))
-         (install (yes-or-no-p "Cabal install the dependencies? "))
-         (update  (when install (yes-or-no-p "Update cabal packages? ")))
-         (example (yes-or-no-p "Add a simple example? ")))
-    (mkdir haskell-emacs-dir t)
-    (when sandbox
-      (message "Creating sandbox...")
-      (with-temp-buffer
-        (cd haskell-emacs-dir)
-        (unless (= 0 (call-process "cabal" nil t nil
-                                   "sandbox"
-                                   "init"))
-          (error (buffer-string)))))
-    (when update
-      (message "Updating cabal packages...")
-      (with-temp-buffer
-        (unless (= 0 (call-process "cabal" nil t nil
-                                   "update"))
-          (error (buffer-string)))))
-    (when install
-      (message "Installing dependencies...")
-      (with-temp-buffer
-        (cd haskell-emacs-dir)
-        (mapc (lambda (x) (message (concat "Installing " x "..."))
-                (unless (= 0 (call-process "cabal" nil t nil
-                                           "install"
-                                           x))
-                  (error (buffer-string))))
-              '("happy"
-                "haskell-src-exts"
-                "parallel"
-                "utf8-string"))
-        (message "Installing atto-lisp...")
-        (unless (= 0 (if (version< (substring (shell-command-to-string
-                                               "ghc --numeric-version") 0 -1)
-                                   "7.10")
-                         (call-process "cabal" nil t nil "install"
-                                       "atto-lisp")
-                       (call-process "cabal" nil t nil "install"
-                                     "--allow-newer=deepseq,blaze-builder"
-                                     "atto-lisp")))
-          (error (buffer-string)))))
-    (if example
-        (with-temp-buffer
-          (insert "
+  (cl-flet ((cabal (&rest ARGS)
+                   (with-temp-buffer
+                     (when (file-exists-p haskell-emacs-dir)
+                       (cd haskell-emacs-dir))
+                     (if (= 0 (apply 'call-process "cabal" nil t nil ARGS))
+                         (buffer-string)
+                       (error (buffer-string))))))
+    (let* ((sandbox (unless (version< (substring (cabal "--numeric-version") 0 -1)
+                                      "1.18")
+                        (yes-or-no-p "Create a cabal sandbox? ")))
+             (install (yes-or-no-p "Cabal install the dependencies? "))
+             (update  (when install (yes-or-no-p "Update cabal packages? ")))
+             (example (yes-or-no-p "Add a simple example? ")))
+        (mkdir haskell-emacs-dir t)
+        (when sandbox
+          (message "Creating sandbox...")
+          (cabal "sandbox" "init"))
+        (when update
+          (message "Updating cabal packages...")
+          (cabal "update"))
+        (when install
+          (message "Installing dependencies...")
+          (mapc (lambda (x) (message (concat "Installing " x "..."))
+                  (cabal "install" x))
+                '("happy" "haskell-src-exts" "parallel" "utf8-string"))
+          (message "Installing atto-lisp...")
+          (if (version< (substring (shell-command-to-string
+                                      "ghc --numeric-version") 0 -1)
+                          "7.10")
+                (cabal "install" "atto-lisp")
+              (cabal "install" "--allow-newer=deepseq,blaze-builder" "atto-lisp")))
+        (if example
+            (with-temp-buffer
+              (insert "
 module Matrix where
 
 import qualified Data.List as L
@@ -465,9 +454,9 @@ isIdentity xs = xs == identity (length xs)
 -- | Compute the dyadic product of two vectors.
 dyadic :: [Int] -> [Int] -> [[Int]]
 dyadic xs ys = map (\\x -> map (x*) ys) xs")
-          (write-file (concat haskell-emacs-dir "Matrix.hs"))
-                          "example")
-      "no-example")))
+              (write-file (concat haskell-emacs-dir "Matrix.hs"))
+              "example")
+          "no-example"))))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
