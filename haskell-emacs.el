@@ -418,18 +418,20 @@ Read C-h f haskell-emacs-init for more instructions")
       (message "Installing dependencies...")
       (with-temp-buffer
         (cd haskell-emacs-dir)
-        (unless (= 0 (call-process "cabal" nil t nil
-                                   "install"
-                                   "happy"
-                                   "haskell-src-exts"
-                                   "parallel"
-                                   "utf8-string"))
+        (mapc (lambda (x) (message (concat "Installing " x "..."))
+                (unless (= 0 (call-process "cabal" nil t nil
+                                           "install"
+                                           x))
+                  (error (buffer-string))))
+              '("happy"
+                "haskell-src-exts"
+                "parallel"
+                "utf8-string"))
+        (message "Installing atto-lisp...")
+        (unless (= 0 (call-process "cabal" nil t nil "install"
+                                 "--allow-newer=deepseq,blaze-builder"
+                                 "atto-lisp"))
           (error (buffer-string)))))
-    (unless (= 0 (call-process "cabal" nil t nil
-                               "install"
-                               "--allow-newer=deepseq,blaze-builder"
-                               "atto-lisp"))
-      (error (buffer-string)))
     (if example
         (with-temp-buffer
           (insert "
