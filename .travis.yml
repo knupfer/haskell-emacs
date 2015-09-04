@@ -58,6 +58,14 @@ install:
  -
  - cabal update
  - |
+   if [ $GHCVER = "7.6.3" ] || [ $GHCVER = "7.8.4" ]; then
+     cabal install atto-lisp
+   else
+     cabal install --allow-newer=deepseq,blaze-builder atto-lisp
+   fi
+ - cabal install haskell-src-exts parallel utf8-string
+ -
+ - |
    if [ ! -e $PREFIX/haskell-utils/.cabal-sandbox/bin/hlint ]; then
      mkdir -p $PREFIX/haskell-utils
      cd $PREFIX/haskell-utils
