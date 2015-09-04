@@ -235,8 +235,8 @@ If you want to use such functions in your elisp library, do the following:
   (interactive "p")
   (setq haskell-emacs--module-list (haskell-emacs--search-modules))
   (let* ((first-time (unless (file-directory-p haskell-emacs-dir)
-                       (mkdir haskell-emacs-dir t)
-                       (when arg (haskell-emacs--install-dialog))))
+                       (if arg (haskell-emacs--install-dialog)
+                         (mkdir haskell-emacs-dir t))))
          (funs (apply 'append
                       (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
                               (apply 'list haskell-emacs-dir
@@ -400,6 +400,7 @@ Read C-h f haskell-emacs-init for more instructions")
          (install (yes-or-no-p "Cabal install the dependencies? "))
          (update  (when install (yes-or-no-p "Update cabal packages? ")))
          (example (yes-or-no-p "Add a simple example? ")))
+    (mkdir haskell-emacs-dir t)
     (when sandbox
       (message "Creating sandbox...")
       (with-temp-buffer
