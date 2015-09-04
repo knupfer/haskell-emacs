@@ -33,7 +33,7 @@ before_install:
  - echo    ║ WARNING! Tests are not run with emacs23 because of --batch bugs.          ║
  - echo    ║          It should work with emacs23, to test it call it without --batch. ║
  - echo    ║          This is unfortunately not supported on travis-ci.                ║
- - echo    ║ emacs -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)" ║
+ - echo    ║ $ emacs -Q -l test/haskell-emacs-test.el                                  ║
  - echo    ╚═══════════════════════════════════════════════════════════════════════════╝
  -
 
@@ -57,14 +57,6 @@ install:
    fi
  -
  - cabal update
- - |
-   if [ $GHCVER = "7.6.3" ] || [ $GHCVER = "7.8.4" ]; then
-     cabal install atto-lisp
-   else
-     cabal install --allow-newer=deepseq,blaze-builder atto-lisp
-   fi
- - cabal install haskell-src-exts parallel utf8-string
- -
  - |
    if [ ! -e $PREFIX/haskell-utils/.cabal-sandbox/bin/hlint ]; then
      mkdir -p $PREFIX/haskell-utils
@@ -112,4 +104,3 @@ script:
  - hlint HaskellEmacs.hs
  - diff -s HaskellEmacs.hs <(stylish-haskell HaskellEmacs.hs)
  - emacs --batch -Q -l test/haskell-emacs-test.el
- - emacs --batch -Q -l test/haskell-emacs-test.el --eval="(haskell-emacs-run-tests)"
