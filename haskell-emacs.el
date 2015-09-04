@@ -421,11 +421,15 @@ Read C-h f haskell-emacs-init for more instructions")
         (unless (= 0 (call-process "cabal" nil t nil
                                    "install"
                                    "happy"
-                                   "atto-lisp"
                                    "haskell-src-exts"
                                    "parallel"
                                    "utf8-string"))
           (error (buffer-string)))))
+    (unless (= 0 (call-process "cabal" nil t nil
+                               "install"
+                               "--allow-newer=deepseq,blaze-builder"
+                               "atto-lisp"))
+      (error (buffer-string)))
     (if example
         (with-temp-buffer
           (insert "
