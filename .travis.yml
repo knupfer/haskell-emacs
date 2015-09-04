@@ -8,17 +8,17 @@ matrix:
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
     - env: GHCVER=7.10.2 EMACSVER=24 CABALVER=1.22
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2,happy-1.19.5,ocaml], sources: [hvr-ghc]}}
-    - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
-    - env: GHCVER=7.8.4 EMACSVER=24 CABALVER=1.18
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
-    - env: GHCVER=7.6.3 EMACSVER=24 CABALVER=1.18
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.6.3,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.20
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.8.4 EMACSVER=24 CABALVER=1.20
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.8.4,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
+    - env: GHCVER=7.6.3 EMACSVER=24 CABALVER=1.20
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.6.3,happy-1.19.5,ocaml],  sources: [hvr-ghc]}}
 
   allow_failures:
    - env: GHCVER=head EMACSVER=head CABALVER=head
    - env: GHCVER=7.10.2 EMACSVER=head CABALVER=1.22
-   - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.18
+   - env: GHCVER=7.8.4 EMACSVER=head CABALVER=1.20
 
 cache:
   directories:
