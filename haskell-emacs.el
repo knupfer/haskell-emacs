@@ -36,7 +36,10 @@
 
 ;;; Code:
 
-(require 'cl-macs)
+(if (version< emacs-version "24")
+    (progn (require 'cl)
+           (defalias 'cl-flet 'flet))
+  (require 'cl-macs))
 
 (defgroup haskell-emacs nil
   "FFI for using haskell in emacs."
