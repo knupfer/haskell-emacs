@@ -37,7 +37,7 @@ instance Arity f => Arity ((->) a f) where
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
 main = do printer <- newChan
-          forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
+          _ <- forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
           mapM_ (forkIO . (writeChan printer $!)) =<< fullParse <$> B.getContents
 
 -- | Recursively evaluate a lisp in parallel, using functions defined
