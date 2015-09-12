@@ -46,14 +46,14 @@ main = do printer <- newChan
 traverseLisp :: Lisp -> Result Lisp
 traverseLisp l = case l of
   List (Symbol x:xs) -> sym (T.filter (/='\\') x) xs
-  List xs            -> list xs
+  List xs            -> List <$> eval xs
   Symbol "nil"       -> Success nil
   _                  -> Success l
-  where eval     = sequence . parMap rdeepseq traverseLisp
-        list     = fmap List . eval
-        sym x xs | x `notElem` M.keys dispatcher = List . (:) (Symbol x) <$> eval xs
-                 | length xs /= 1 = run x =<< List <$> eval xs
-                 | otherwise = run x =<< traverseLisp (head xs)
+  where {-@ assume eval :: xs:[Lisp] -> Result {v:[Lisp] | len xs == len v} @-}
+        eval     = sequence . parMap rdeepseq traverseLisp
+        sym x xs = maybe (List . (Symbol x:) <$> eval xs)
+                         (=<< (if length xs == 1 then head else List) <$> eval xs)
+                         $ M.lookup x dispatcher
 
 -- | Takes a stream of instructions and returns lazy list of
 -- results.
@@ -82,10 +82,6 @@ getDocumentation funs code =
       $ takeWhile (not . T.isPrefixOf (f <> " ")) ls
       ) funs
   where ls = T.lines code
-
--- | Takes a function (described in a Text) and feeds it a lisp.
-run :: Text -> Lisp -> Result Lisp
-run t l = maybe (Error "Function not found") ($l) $ M.lookup t dispatcher
 
 {-@ formatResult :: Nat -> Result Lisp -> B.ByteString @-}
 formatResult :: Int -> Result Lisp -> B.ByteString
