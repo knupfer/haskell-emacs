@@ -5,6 +5,7 @@
 
 module Foreign.Emacs.Internal where
 
+import           Control.Applicative
 import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Monad.Trans
