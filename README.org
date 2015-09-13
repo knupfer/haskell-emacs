@@ -359,6 +359,71 @@ something only for it's effects use =eval_= instead.
   -- example9 = do eval  [Symbol "forward-line"]
   --               eval_ [Symbol "forward-line"]
 #+END_SRC
+
+You can write type safe elisp if you compose small functions in the
+emacs monad with type signatures.  You can try the following code
+which asks for every non empty line in your buffer if you want to
+comment it.
+
+#+BEGIN_SRC haskell
+  {-# LANGUAGE OverloadedStrings #-}
+  module Comment (commentLines) where
+
+  import           Control.Applicative
+  import           Control.Monad
+  import           Data.AttoLisp
+  import           Data.Text
+  import           Foreign.Emacs
+
+  data MajorMode = Haskell
+                 | EmacsLisp
+                 | Unknown deriving (Eq, Show)
+
+  gotoChar :: Int -> Emacs ()
+  gotoChar n = eval_ [Symbol "goto-char", Number $ fromIntegral n]
+
+  yOrNP :: Text -> Emacs Bool
+  yOrNP s = eval [Symbol "y-or-n-p", String s]
+
+  forwardLine :: Int -> Emacs Int
+  forwardLine n = eval [Symbol "forward-line", Number $ fromIntegral n]
+
+  lookingAt :: Text -> Emacs Bool
+  lookingAt s = eval [Symbol "looking-at", String s]
+
+  insert :: Text -> Emacs ()
+  insert s = eval_ [Symbol "insert", String s]
+
+  getVar :: Text -> Emacs Lisp
+  getVar s = eval [Symbol "identity", Symbol s]
+
+  majorMode :: Emacs MajorMode
+  majorMode = do Symbol x <- getVar "major-mode"
+                 return . toMajorMode $ x
+
+  toPrefix :: MajorMode -> Text
+  toPrefix Haskell   = "-- "
+  toPrefix EmacsLisp = "; "
+  toPrefix Unknown   = "# "
+
+  toMajorMode :: Text -> MajorMode
+  toMajorMode s = case s of
+    "haskell-mode"    -> Haskell
+    "emacs-lisp-mode" -> EmacsLisp
+    _                 -> Unknown
+
+  commentLines :: Emacs Text
+  commentLines = do
+    prefix <- toPrefix <$> majorMode
+    let loop = do hasChr <- not <$> lookingAt "^ *$"
+                  when hasChr $ do ask <- yOrNP "Comment line?"
+                                   when ask $ insert prefix
+                  notEof <- (/=1) <$> forwardLine 1
+                  when notEof loop
+    gotoChar 0
+    loop
+    return "Done"
+#+END_SRC
 * Contribute
 I highly encourage contributions of all sorts.  If you notice a
 feature that doesn't behave as you would like or simply doesn't exist,
