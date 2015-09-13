@@ -63,7 +63,7 @@ install:
    else
      cabal install --allow-newer=deepseq,blaze-builder atto-lisp
    fi
- - cabal install haskell-src-exts parallel utf8-string
+ - cabal install haskell-src-exts parallel utf8-string mtl
  -
  - |
    if [ ! -e $PREFIX/haskell-utils/.cabal-sandbox/bin/hlint ]; then
