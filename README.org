@@ -255,18 +255,110 @@ If you want to use such functions in your elisp library, do the following:
 ;;; my-nums.el ends here
 #+END_SRC
 
-* Fancy Stuff
-One of the mind bending aspects is that it supports as input and as
-output type lisp expressions.  If you import Data.AttoLisp, you can
-write functons of type Lisp -> Lisp.  The returned Lisp will be
-evaluated (and not only returned) by emacs, so you can use
-=haskell-emacs= as an macro-engine written in Haskell.  It even allows
-you to instruct emacs to do impure things, like moving the point,
-apply an emacs function and call with the result of this function a
-=haskell-emacs= function...
+* Foreign.Emacs
+If you =import Foreign.Emacs=, you'll have more advanced features at
+your finger tip:
 
-You can only register pure functions to =haskell-emacs=, but you can --
-if you dare -- use unsafePerformIO and you can use the Haskell FFI.
+#+BEGIN_SRC haskell
+data Emacs a
+eval  :: [Lisp] -> Emacs a
+eval_ :: [Lisp] -> Emacs ()
+
+data Lisp
+Symbol  :: Text   -> Lisp
+String  :: Text   -> Lisp
+Number  :: Number -> Lisp
+List    :: [Lisp] -> Lisp
+DotList :: [Lisp] -> Lisp -> Lisp
+#+END_SRC
+
+If a function returns a =Lisp= it will be evaluated by emacs.  A
+function which takes a =Lisp= can perform arbitrary transformations on
+a =Lisp=.  A function which returns the monad =Emacs a= will engage a
+dialog with emacs.  If you call such a function asynchronously, it'll
+interleave the dialog with emacs, but return a future which holds the
+result of the function.  Note that when using =eval= you have to
+ensure that the type of the result is inferable, if you perform
+something only for it's effects use =eval_= instead.
+
+#+BEGIN_SRC haskell
+  -- /home/foo/.emacs.d/haskell-fun/Test.hs
+  {-# LANGUAGE OverloadedStrings #-}
+  module Test where
+
+  import           Control.Monad
+  import qualified Data.List     as L
+  import qualified Data.Text     as T
+  import           Foreign.Emacs
+
+  forwardChar :: Int -> Lisp
+  forwardChar n = List [Symbol "forward-char", Number $ fromIntegral n]
+
+  lispType :: Lisp -> String
+  lispType (Number  _) = "Number"
+  lispType (String  _) = "String"
+  lispType (Symbol  _) = "Symbol"
+  lispType _           = "List"
+
+  genericTranspose :: [[Lisp]] -> [[Lisp]]
+  genericTranspose = L.transpose
+
+  -- This is fine: it will call forward-line, return the result (which
+  -- is an Int) to haskell which will discard the result and return to
+  -- emacs nil.
+  example1 :: Emacs ()
+  example1 = eval_ [Symbol "forward-line"]
+
+  -- This is fine: it will call forward-line, return the result (which
+  -- is an Int) to haskell which will return to emacs the resulting Int.
+  example2 :: Emacs Int
+  example2 = eval [Symbol "forward-line"]
+
+  -- This is fine: it will go n lines forward and bounce if it reaches
+  -- the end of the buffer.
+  example3 :: Int -> Emacs ()
+  example3 n = do x <- eval [Symbol "forward-line", Number $ fromIntegral n]
+                  eval_     [Symbol "forward-line", Number $ negate x]
+
+  -- This is fine: it is nearly the same as example3, if called
+  -- asynchronously, the returned lisp will be executed only when the
+  -- future is asked for.
+  example4 :: Int -> Emacs Lisp
+  example4 n = do x <- eval     [Symbol "forward-line", Number $ fromIntegral n]
+                  return $ List [Symbol "forward-line", Number $ negate x]
+
+  -- This is fine: a mutual recursion between haskell and emacs.
+  example5 :: Int -> Emacs ()
+  example5 n = do eval_ [Symbol "insert", String . T.pack $ show n]
+                  when (n > 0) $ example5 (n-1)
+
+  -- This is fine: nearly the same but ugly.
+  example6 :: Int -> Emacs Lisp
+  example6 n = do eval_ [Symbol "insert", String . T.pack $ show n]
+                  return $ if n > 0
+                              then List [Symbol "Test.example6", Number $ fromIntegral (n-1)]
+                              else List []
+
+  -- This is bad: at the moment, emacs monads aren't allowed to
+  -- interleave, this will result in a dead lock
+  example7 :: Int -> Emacs ()
+  example7 n = do eval_ [Symbol "insert", String . T.pack $ show n]
+                  eval_ $ if n > 0
+                             then [Symbol "Test.example7", Number $ fromIntegral (n-1)]
+                             else []
+
+  -- This is bad: it will call forward-line, return the result (which is
+  -- an Int) to haskell which will try parse the Int as a () resulting
+  -- in a runtime error.
+  example8 :: Emacs ()
+  example8 = eval [Symbol "forward-line"]
+
+  -- This is bad: ghc can't infer the type of the first eval and will
+  -- refuse to compile.
+  -- example9 :: Emacs ()
+  -- example9 = do eval  [Symbol "forward-line"]
+  --               eval_ [Symbol "forward-line"]
+#+END_SRC
 * Contribute
 I highly encourage contributions of all sorts.  If you notice a
 feature that doesn't behave as you would like or simply doesn't exist,
