@@ -6,7 +6,7 @@ module Main where
 {--<<import>>--}
 import           Control.Applicative              (optional, (<$>), (<*>))
 import           Control.Arrow                    hiding (app)
-import           Control.Concurrent.Extra
+import           Control.Concurrent
 import           Control.Monad                    (forever)
 import           Control.Monad.Trans.Reader
 import           Control.Parallel.Strategies
@@ -47,15 +47,15 @@ main :: IO ()
 main = do
   printer <- newChan
   getter  <- newEmptyMVar
-  lock    <- newLock
+  lock    <- newMVar ()
   _       <- forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
   is      <- fullParse <$> B.getContents
   mapM_ (forkIO . runInstruction lock getter printer) is
 
-runInstruction :: Lock -> MVar Lisp -> Chan B.ByteString -> Instruction -> IO ()
+runInstruction :: MVar () -> MVar Lisp -> Chan B.ByteString -> Instruction -> IO ()
 runInstruction _ g _ (EmacsToHaskell ls)                 = putMVar g   $! ls
 runInstruction _ _ p (HaskellToEmacs msg)                = writeChan p $! msg
-runInstruction l g p (StartDialog (EmacsInternal rdr) n) = withLock l  $  do
+runInstruction l g p (StartDialog (EmacsInternal rdr) n) = withMVar l $ \_ -> do
   x <- runReaderT rdr (g, p)
   writeChan p . formatResult n $ Success x
 
