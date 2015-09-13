@@ -1,7 +1,7 @@
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE OverlappingInstances      #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Foreign.Emacs.Internal where
 
