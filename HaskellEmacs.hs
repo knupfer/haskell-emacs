@@ -35,6 +35,12 @@ instance Arity x where
 instance Arity f => Arity ((->) a f) where
   arity f = 1 + arity (f undefined)
 
+data Instruction = EmacsToHaskell Lisp
+                 | HaskellToEmacs B.ByteString
+                 | StartDialog (E.Emacs Lisp) Int
+
+{-@ StartDialog :: E.Emacs Lisp -> Nat -> Instruction @-}
+
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
 main = do printer <- newChan
