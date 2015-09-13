@@ -4,10 +4,11 @@
 
 module Main where
 {--<<import>>--}
-import           Control.Applicative              ((<$>), (<*>))
+import           Control.Applicative              (optional, (<$>), (<*>))
 import           Control.Arrow                    hiding (app)
-import           Control.Concurrent
+import           Control.Concurrent.Extra
 import           Control.Monad                    (forever)
+import           Control.Monad.Trans.Reader
 import           Control.Parallel.Strategies
 import           Data.AttoLisp
 import qualified Data.Attoparsec.ByteString.Char8 as AC
@@ -15,11 +16,11 @@ import qualified Data.Attoparsec.ByteString.Lazy  as A
 import qualified Data.ByteString.Lazy.Char8       as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8        as B (length)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (mapMaybe, maybeToList)
+import           Data.Maybe
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
-import qualified Foreign.Emacs.Internal           as E
+import           Foreign.Emacs.Internal
 import           Language.Haskell.Exts            hiding (List, String, Symbol,
                                                    name, sym)
 import           Language.Haskell.Exts.SrcLoc
@@ -37,45 +38,64 @@ instance Arity f => Arity ((->) a f) where
 
 data Instruction = EmacsToHaskell Lisp
                  | HaskellToEmacs B.ByteString
-                 | StartDialog (E.Emacs Lisp) Int
+                 | StartDialog (Emacs Lisp) Int
 
-{-@ StartDialog :: E.Emacs Lisp -> Nat -> Instruction @-}
+{-@ StartDialog :: Emacs Lisp -> Nat -> Instruction @-}
 
 -- | Watch for commands and dispatch them in a seperate fork.
 main :: IO ()
-main = do printer <- newChan
-          _ <- forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
-          mapM_ (forkIO . (writeChan printer $!)) =<< fullParse <$> B.getContents
+main = do
+  printer <- newChan
+  getter  <- newEmptyMVar
+  lock    <- newLock
+  _       <- forkIO . forever $ readChan printer >>= B.putStr >> hFlush stdout
+  is      <- fullParse <$> B.getContents
+  mapM_ (forkIO . runInstruction lock getter printer) is
+
+runInstruction :: Lock -> MVar Lisp -> Chan B.ByteString -> Instruction -> IO ()
+runInstruction _ g _ (EmacsToHaskell ls)                 = putMVar g   $! ls
+runInstruction _ _ p (HaskellToEmacs msg)                = writeChan p $! msg
+runInstruction l g p (StartDialog (EmacsInternal rdr) n) = withLock l  $  do
+  x <- runReaderT rdr (g, p)
+  writeChan p . formatResult n $ Success x
 
 -- | Recursively evaluate a lisp in parallel, using functions defined
 -- by the user (see documentation of the emacs function `haskell-emacs-init').
 {-@ Lazy traverseLisp @-}
-traverseLisp :: Lisp -> Result Lisp
+traverseLisp :: Either (Emacs Lisp) Lisp -> Result (Either (Emacs Lisp) Lisp)
 traverseLisp l = case l of
-  List (Symbol x:xs) -> sym (T.filter (/='\\') x) xs
-  List xs            -> List <$> eval xs
-  Symbol "nil"       -> Success nil
-  _                  -> Success l
-  where {-@ assume eval :: xs:[Lisp] -> Result {v:[Lisp] | len xs == len v} @-}
-        eval     = sequence . parMap rdeepseq traverseLisp
-        sym x xs = maybe (List . (Symbol x:) <$> eval xs)
-                         (=<< (if length xs == 1 then head else List) <$> eval xs)
+  Right (List (Symbol x:xs)) -> sym (T.filter (/='\\') x) xs
+  Right (List xs)            -> Right . List <$> evl xs
+  Right (Symbol "nil")       -> Success $ Right nil
+  _                          -> Success l
+  where {-@ assume evl :: xs:[Lisp] -> Result {v:[Lisp] | len xs == len v} @-}
+        evl      = (>>= noNest) . sequence . parMap rdeepseq (traverseLisp . Right)
+        sym x xs = maybe (Right . List . (Symbol x:) <$> evl xs)
+                         (=<< (if length xs == 1 then head else List) <$> evl xs)
                          $ M.lookup x dispatcher
+        noNest   = either (const (Error "Emacs monad isn't nestable."))
+                          Success . sequence
 
 -- | Takes a stream of instructions and returns lazy list of
 -- results.
 {-@ Lazy fullParse @-}
-fullParse :: B.ByteString -> [B.ByteString]
+fullParse :: B.ByteString -> [Instruction]
 fullParse a = case parseInput a of A.Done a' b -> b : fullParse a'
                                    A.Fail {}   -> []
 
 -- | Parse an instruction and stamp the number of the instruction into
 -- the result.
-parseInput :: B.ByteString -> A.Result B.ByteString
+parseInput :: B.ByteString -> A.Result Instruction
 parseInput = A.parse $ do
-  i <- A.option 0 AC.decimal
-  l <- lisp
-  return . formatResult i . traverseLisp $ l
+  i          <- A.option 0 AC.decimal
+  isInternal <- isJust <$> optional "|"
+  l          <- lisp
+  return $ if isInternal
+    then EmacsToHaskell l
+    else case traverseLisp $ Right l of
+      Success (Left x)  -> StartDialog x i
+      Success (Right x) -> HaskellToEmacs . formatResult i $ Success x
+      Error x           -> HaskellToEmacs . formatResult i $ Error x
 
 -- | Scrape the documentation of haskell functions to serve it in emacs.
 {-@ getDocumentation :: x:[Text] -> Text -> {v:[Text] | len x == len v} @-}
@@ -101,7 +121,7 @@ formatResult i l = f $ case l of
         num            = Number . fromIntegral
 
 -- | Map of available functions which get transformed to work on lisp.
-dispatcher :: M.Map Text (Lisp -> Result Lisp)
+dispatcher :: M.Map Text (Lisp -> Result (Either (Emacs Lisp) Lisp))
 dispatcher = M.fromList $
   [ ("arityFormat", transform arityFormat . normalize)
   , ("allExports",  transform allExports)
@@ -112,8 +132,8 @@ dispatcher = M.fromList $
 
 -- | Transform a curried function to a function which receives and
 -- returns lisp forms.
-transform :: (FromLisp a, ToLisp b) => (a -> b) -> Lisp -> Result Lisp
-transform = (. fromLisp) . fmap . (toLisp .)
+transform :: (FromLisp a, ToEmacs b) => (a -> b) -> Lisp -> Result (Either (Emacs Lisp) Lisp)
+transform = (. fromLisp) . fmap . (toEmacs .)
 
 -- | Prevent bad input for the bootstrap.
 normalize :: Lisp -> Lisp
