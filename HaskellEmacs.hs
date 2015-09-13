@@ -19,6 +19,7 @@ import           Data.Maybe                       (mapMaybe, maybeToList)
 import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
+import qualified Foreign.Emacs.Internal           as E
 import           Language.Haskell.Exts            hiding (List, String, Symbol,
                                                    name, sym)
 import           Language.Haskell.Exts.SrcLoc

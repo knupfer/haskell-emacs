@@ -72,6 +72,8 @@
     (insert-file-contents load-file-name)
     (insert-file-contents
      (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
+    (insert-file-contents
+     (concat (file-name-directory load-file-name) "Foreign/Emacs/Internal.hs"))
     (sha1 (buffer-string))))
 (defvar haskell-emacs--count 0)
 (defvar haskell-emacs--function-hash nil)
@@ -503,7 +505,12 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
                    (equal code (with-temp-buffer (insert-file-contents heF)
                                                  (buffer-string))))
         (insert code)
-        (write-file heF))
+        (write-file heF)
+        (mkdir (concat haskell-emacs-dir "Foreign/Emacs/") t)
+        (with-temp-buffer
+          (insert-file-contents (concat (file-name-directory haskell-emacs--load-dir)
+                                        "Foreign/Emacs/Internal.hs"))
+          (write-file (concat haskell-emacs-dir "Foreign/Emacs/Internal.hs"))))
       (message "Compiling ...")
       (haskell-emacs--compile-command heF heB)))
   (setq haskell-emacs--proc
