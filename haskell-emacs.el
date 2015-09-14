@@ -376,11 +376,19 @@ Read C-h f haskell-emacs-init for more instructions")
   (haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
-    "Optimize the ast of LISP."
-   (if (and (listp lisp)
-              (member (car lisp) haskell-emacs--fun-list))
-         (cons (car lisp) (mapcar 'haskell-emacs--optimize-ast (cdr lisp)))
-       (eval lisp)))
+  "Optimize the ast of LISP."
+  (if (and (listp lisp)
+           (member (car lisp) haskell-emacs--fun-list))
+      (cons (car lisp) (mapcar 'haskell-emacs--optimize-ast (cdr lisp)))
+    (haskell-emacs--no-properties (eval lisp))))
+
+(defun haskell-emacs--no-properties (xs)
+  "Take XS and remove recursively all text properties."
+  (if (stringp xs)
+      (substring-no-properties xs)
+    (if (listp xs)
+        (mapcar 'haskell-emacs--no-properties xs)
+      xs)))
 
 (defun haskell-emacs--fun-wrapper (fun args docs)
   "Take FUN with ARGS and return wrappers in elisp with the DOCS."

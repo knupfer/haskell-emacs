@@ -52,8 +52,9 @@ eval lsp = EmacsInternal $ do
                                     , Symbol "haskell-emacs--proc"
                                     , List [ Symbol "format"
                                            , String "|%S"
-                                           , List [ Symbol "list"
-                                                  , List lsp ]]]
+                                           , List [ Symbol "haskell-emacs--no-properties"
+                                                  , List [ Symbol "list"
+                                                           , List lsp]]]]
               in encode [B.length x] <> x
 
 eval_ :: [Lisp] -> Emacs ()
