@@ -367,35 +367,21 @@ comment it.
 
 #+BEGIN_SRC haskell
   {-# LANGUAGE OverloadedStrings #-}
-  module Comment (commentLines) where
+  module Comment ( commentLines1
+                 , commentLines2
+                 ) where
 
   import           Control.Applicative
   import           Control.Monad
   import           Data.AttoLisp
-  import           Data.Text
+  import           Data.Char
+  import           Data.Text           (Text)
+  import qualified Data.Text           as T
   import           Foreign.Emacs
 
   data MajorMode = Haskell
                  | EmacsLisp
                  | Unknown deriving (Eq, Show)
-
-  gotoChar :: Int -> Emacs ()
-  gotoChar n = eval_ [Symbol "goto-char", Number $ fromIntegral n]
-
-  yOrNP :: Text -> Emacs Bool
-  yOrNP s = eval [Symbol "y-or-n-p", String s]
-
-  forwardLine :: Int -> Emacs Int
-  forwardLine n = eval [Symbol "forward-line", Number $ fromIntegral n]
-
-  lookingAt :: Text -> Emacs Bool
-  lookingAt s = eval [Symbol "looking-at", String s]
-
-  insert :: Text -> Emacs ()
-  insert s = eval_ [Symbol "insert", String s]
-
-  getVar :: Text -> Emacs Lisp
-  getVar s = eval [Symbol "identity", Symbol s]
 
   majorMode :: Emacs MajorMode
   majorMode = do Symbol x <- getVar "major-mode"
@@ -412,8 +398,28 @@ comment it.
     "emacs-lisp-mode" -> EmacsLisp
     _                 -> Unknown
 
-  commentLines :: Emacs Text
-  commentLines = do
+  yOrNP :: Text -> Emacs Bool
+  yOrNP s = eval [Symbol "y-or-n-p", String s]
+
+  insert :: Text -> Emacs ()
+  insert s = eval_ [Symbol "insert", String s]
+
+  getVar :: Text -> Emacs Lisp
+  getVar s = eval [Symbol "identity", Symbol s]
+
+  -- implementation1
+
+  gotoChar :: Int -> Emacs ()
+  gotoChar n = eval_ [Symbol "goto-char", Number $ fromIntegral n]
+
+  forwardLine :: Int -> Emacs Int
+  forwardLine n = eval [Symbol "forward-line", Number $ fromIntegral n]
+
+  lookingAt :: Text -> Emacs Bool
+  lookingAt s = eval [Symbol "looking-at", String s]
+
+  commentLines1 :: Emacs Text
+  commentLines1 = do
     prefix <- toPrefix <$> majorMode
     let loop = do hasChr <- not <$> lookingAt "^ *$"
                   when hasChr $ do ask <- yOrNP "Comment line?"
@@ -423,7 +429,61 @@ comment it.
     gotoChar 0
     loop
     return "Done"
+
+  -- implementation2
+
+  bufferString :: Emacs Text
+  bufferString = eval [Symbol "buffer-string"]
+
+  gotoLine :: Int -> Emacs Int
+  gotoLine n = eval [Symbol "goto-line", Number $ fromIntegral n]
+
+  notEmpty :: Text -> [Int]
+  notEmpty str = [n | (l,n) <- zip (T.lines str) [1..], not $ T.all isSpace l]
+
+  commentLines2 :: Emacs Text
+  commentLines2 = do prefix <- toPrefix <$> majorMode
+                     ls     <- notEmpty <$> bufferString
+                     mapM_ (\x -> do gotoLine x
+                                     ask <- yOrNP "Comment line?"
+                                     when ask $ insert prefix) ls
+                     return "Done"
 #+END_SRC
+
+The implementation1 is more or less in an imperative style while the
+implementation2 is a lot more functional.  Needless to say you should
+prefer the second one.  If you check this file with liquid-haskell, it
+will complain about the first implementation because it isn't provable
+that it will terminate.  Additionally, the second implementation
+communicates less times with emacs resulting in a better performance
+(transfering one time the entire buffer is cheap).  Assuming that one
+answers always with no, =commentLines1= communicates with emacs:
+- 3x per non-empty line
+- 2x per empty line
+- 2x per call
+
+=commentLines2= communicates with emacs:
+- 2x per non-empty line
+- 0x per empty line
+- 2x per call
+
+Let's compare the performance using this readme.
+#+BEGIN_SRC elisp
+  (require 'cl)
+
+  (flet ((y-or-n-p (x) nil))
+    (let ((result (mapcar (lambda (x) (car (benchmark-run 100 (eval (list x)))))
+                          '(Comment.commentLines1
+                            Comment.commentLines2))))
+      (mapcar (lambda (x) (/ x (apply 'min result))) result)))
+#+END_SRC
+
+The first implementation takes 20% more time, even though the second
+has to transfer the whole buffer.
+
+Note that in such a trivial case a function written in elisp would be
+faster (albeit a lot unsafer).  A sophisticated function could take
+the buffer-string, parMap it and replace the old buffer-string.
 * Contribute
 I highly encourage contributions of all sorts.  If you notice a
 feature that doesn't behave as you would like or simply doesn't exist,
