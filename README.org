@@ -164,96 +164,6 @@ You'll need:
 
 Thats all.  If you've got ghc and cabal, the rest will be installed
 automatically if you choose so during the setup dialog.
-* Nixos
-The integration with NixOS is handled by compiling in a =nix-shell=
-which is customizeable.  You can for example add the --pure flag and
-list all the dependencies.  Obviously, in this case, a cabal sandbox
-wouldn't make sense.
-* Shortcomings
-Not all types marshal across languages, if you write a function with
-an unknown type, =haskell-emacs-init= will signal an error with the
-output from GHC.
-
-Higher functions aren't supported at all, you can't pass functions as
-arguments to Haskell functions in emacs.
-
-If you want to write polymorphic functions, you have to use the type
-Lisp (which you have to import from atto-lisp), for example:
-
-#+BEGIN_SRC haskell
-module Concat where
-
-import Data.AttoLisp
-
-concatElisp :: [[Lisp]] -> [Lisp]
-concatElisp = concat
-#+END_SRC
-
-Note that this will work with lists of multiple types:
-
-#+BEGIN_SRC elisp
-(Concat.concatElisp '((1 2 3) ("a" "b" "c")))
-  => (1 2 3 "a" "b" "c")
-#+END_SRC
-
-It is possible to enforce the same type, but that is quite complicated
-(look at the definition of =Base.asTypeOf= in this repo for a start).
-
-If a Haskell function crashes =haskell-emacs= an error will be thrown.
-In this process, every async call will be obviously lost.
-* Modules
-If you want to distribute a Haskell library for =haskell-emacs=,
-just write an elisp file describing the package and the
-corresponding Haskell file in the same dir:
-#+BEGIN_SRC elisp
-;;;; haskell-emacs-pi/haskell-emacs-pi.el
-
-;;; haskell-emacs-pi.el --- return pi
-
-;; Version: 1.0.0
-;; Package-Requires: ((haskell-emacs "2.4.0"))
-
-;;; Code:
-
-(require 'haskell-emacs)
-(provide 'haskell-emacs-pi)
-
-;;; haskell-emacs-pi.el ends here
-#+END_SRC
-
-#+BEGIN_SRC haskell
----- haskell-emacs-pi/Pi.hs
-
-module Pi (piSquare) where
-
-piSquare :: Double
-piSquare = pi^2
-#+END_SRC
-
-That's all.  You can distribute this package for example via
-melpa (don't forget to add the *.hs to the files of the recipe)
-or just point your =load-path= to this directory.  If you call
-afterwards =haskell-emacs-init=, it will automatically find this
-module and provide the functions.
-
-If you want to use such functions in your elisp library, do the following:
-
-#+BEGIN_SRC elisp
-;;; my-nums.el --- add a number to the square of pi
-
-;; Package-Requires: ((haskell-emacs-pi "1.0.0"))
-
-;;; Code:
-
-(require 'haskell-emacs-pi)
-(eval-when-compile (haskell-emacs-init))
-
-;;;### autoload
-(defun my-nums (arg)
-  (+ arg (Pi.piSquare)))
-
-;;; my-nums.el ends here
-#+END_SRC
 
 * Foreign.Emacs
 If you =import Foreign.Emacs=, you'll have more advanced features at
@@ -373,7 +283,6 @@ comment it.
 
   import           Control.Applicative
   import           Control.Monad
-  import           Data.AttoLisp
   import           Data.Char
   import           Data.Text           (Text)
   import qualified Data.Text           as T
@@ -484,6 +393,71 @@ has to transfer the whole buffer.
 Note that in such a trivial case a function written in elisp would be
 faster (albeit a lot unsafer).  A sophisticated function could take
 the buffer-string, parMap it and replace the old buffer-string.
+* Modules
+If you want to distribute a Haskell library for =haskell-emacs=,
+just write an elisp file describing the package and the
+corresponding Haskell file in the same dir:
+#+BEGIN_SRC elisp
+;;;; haskell-emacs-pi/haskell-emacs-pi.el
+
+;;; haskell-emacs-pi.el --- return pi
+
+;; Version: 1.0.0
+;; Package-Requires: ((haskell-emacs "2.4.0"))
+
+;;; Code:
+
+(require 'haskell-emacs)
+(provide 'haskell-emacs-pi)
+
+;;; haskell-emacs-pi.el ends here
+#+END_SRC
+
+#+BEGIN_SRC haskell
+---- haskell-emacs-pi/Pi.hs
+
+module Pi (piSquare) where
+
+piSquare :: Double
+piSquare = pi^2
+#+END_SRC
+
+That's all.  You can distribute this package for example via
+melpa (don't forget to add the *.hs to the files of the recipe)
+or just point your =load-path= to this directory.  If you call
+afterwards =haskell-emacs-init=, it will automatically find this
+module and provide the functions.
+
+If you want to use such functions in your elisp library, do the following:
+
+#+BEGIN_SRC elisp
+;;; my-nums.el --- add a number to the square of pi
+
+;; Package-Requires: ((haskell-emacs-pi "1.0.0"))
+
+;;; Code:
+
+(require 'haskell-emacs-pi)
+(eval-when-compile (haskell-emacs-init))
+
+;;;### autoload
+(defun my-nums (arg)
+  (+ arg (Pi.piSquare)))
+
+;;; my-nums.el ends here
+#+END_SRC
+* Nixos
+The integration with NixOS is handled by compiling in a =nix-shell=
+which is customizeable.  You can for example add the --pure flag and
+list all the dependencies.  Obviously, in this case, a cabal sandbox
+wouldn't make sense.
+* Shortcomings
+Not all types marshal across languages, if you write a function with
+an unknown type, =haskell-emacs-init= will signal an error with the
+output from GHC.
+
+Higher functions aren't supported at all, you can't pass functions as
+arguments to Haskell functions in emacs.
 * Contribute
 I highly encourage contributions of all sorts.  If you notice a
 feature that doesn't behave as you would like or simply doesn't exist,
