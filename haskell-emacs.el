@@ -72,6 +72,10 @@
     (insert-file-contents load-file-name)
     (insert-file-contents
      (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
+    (insert-file-contents
+     (concat (file-name-directory load-file-name) "Foreign/Emacs.hs"))
+    (insert-file-contents
+     (concat (file-name-directory load-file-name) "Foreign/Emacs/Internal.hs"))
     (sha1 (buffer-string))))
 (defvar haskell-emacs--count 0)
 (defvar haskell-emacs--function-hash nil)
@@ -372,11 +376,19 @@ Read C-h f haskell-emacs-init for more instructions")
   (haskell-emacs--get 0))
 
 (defun haskell-emacs--optimize-ast (lisp)
-    "Optimize the ast of LISP."
-   (if (and (listp lisp)
-              (member (car lisp) haskell-emacs--fun-list))
-         (cons (car lisp) (mapcar 'haskell-emacs--optimize-ast (cdr lisp)))
-       (eval lisp)))
+  "Optimize the ast of LISP."
+  (if (and (listp lisp)
+           (member (car lisp) haskell-emacs--fun-list))
+      (cons (car lisp) (mapcar 'haskell-emacs--optimize-ast (cdr lisp)))
+    (haskell-emacs--no-properties (eval lisp))))
+
+(defun haskell-emacs--no-properties (xs)
+  "Take XS and remove recursively all text properties."
+  (if (stringp xs)
+      (substring-no-properties xs)
+    (if (listp xs)
+        (mapcar 'haskell-emacs--no-properties xs)
+      xs)))
 
 (defun haskell-emacs--fun-wrapper (fun args docs)
   "Take FUN with ARGS and return wrappers in elisp with the DOCS."
@@ -503,7 +515,16 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
                    (equal code (with-temp-buffer (insert-file-contents heF)
                                                  (buffer-string))))
         (insert code)
-        (write-file heF))
+        (write-file heF)
+        (mkdir (concat haskell-emacs-dir "Foreign/Emacs/") t)
+        (with-temp-buffer
+          (insert-file-contents (concat (file-name-directory haskell-emacs--load-dir)
+                                        "Foreign/Emacs.hs"))
+          (write-file (concat haskell-emacs-dir "Foreign/Emacs.hs")))
+        (with-temp-buffer
+          (insert-file-contents (concat (file-name-directory haskell-emacs--load-dir)
+                                        "Foreign/Emacs/Internal.hs"))
+          (write-file (concat haskell-emacs-dir "Foreign/Emacs/Internal.hs"))))
       (message "Compiling ...")
       (haskell-emacs--compile-command heF heB)))
   (setq haskell-emacs--proc
