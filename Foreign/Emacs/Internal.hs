@@ -58,4 +58,9 @@ eval lsp = EmacsInternal $ do
               in encode [B.length x] <> x
 
 eval_ :: [Lisp] -> Emacs ()
-eval_ = fmap (const () :: Lisp -> ()) . eval
+eval_ lsp = EmacsInternal $ do
+  (_, chan) <- ask
+  liftIO $ writeChan chan cmd
+  return ()
+  where cmd = let x = encode $ List [Symbol "list", List lsp]
+              in encode [B.length x] <> x
