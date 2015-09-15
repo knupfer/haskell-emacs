@@ -36,6 +36,7 @@ instance Applicative Emacs where
 
 instance Monad Emacs where
   (EmacsInternal x) >>= f = EmacsInternal $ x >>= fromEmacs . f
+  return a = EmacsInternal $ pure a
 
 instance NFData (Emacs Lisp) where
   rnf (EmacsInternal _) = ()
