@@ -35,6 +35,9 @@
       (parallel)
       (num 5)
       (txt "test")
+      (emptyM)
+      (emacsEval)
+      (emacsEval_)
       (now (current-time)))
   (mapc
    (lambda (x)
@@ -102,6 +105,21 @@
                 (expt 2 13) 1000))
   (message (concat "Costs per char : "
                    (format "%.1e" long)))
+  (setq emptyM (/ (car (benchmark-run 20000
+                         (HaskellEmacsTest.emptyEmacsMonad)))
+                  20000))
+  (message (concat "Do emacs monad : "
+                   (format "%.1e" emptyM)))
+  (setq emacsEval (/ (car (benchmark-run 1
+                            (HaskellEmacsTest.emacsMonad 20000)))
+                     20000))
+  (message (concat "Costs per eval : "
+                   (format "%.1e" emacsEval)))
+  (setq emacsEval_ (/ (car (benchmark-run 1
+                             (HaskellEmacsTest.emacsMonad 20000)))
+                      20000))
+  (message (concat "Costs per eval_: "
+                   (format "%.1e" emacsEval_)))
   (setq serial (car (benchmark-run 8
                       (HaskellEmacsTest.doNBody 5000000))))
   (message (concat "Sync  workload : "

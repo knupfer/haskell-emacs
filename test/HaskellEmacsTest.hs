@@ -2,8 +2,10 @@
 
 module HaskellEmacsTest where
 
+import           Control.Monad
 import qualified Data.Text        as T
 import           External.NBody
+import           Foreign.Emacs
 import           System.IO.Unsafe
 
 -- String
@@ -98,3 +100,14 @@ nthFib = (!!) fibs
 
 doNBody :: Integer -> Double
 doNBody = unsafePerformIO . nbody
+
+emptyEmacsMonad :: Emacs ()
+emptyEmacsMonad = return ()
+
+emacsMonad :: Int -> Emacs Int
+emacsMonad n = do a <- replicateM n $ eval [Symbol "identity", Number 1]
+                  return $ sum a
+
+emacsMonad_ :: Int -> Emacs Int
+emacsMonad_ n = do replicateM_ n $ eval_ [Symbol "identity", Number 1]
+                   return n
