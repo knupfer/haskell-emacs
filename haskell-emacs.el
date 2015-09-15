@@ -67,16 +67,7 @@
   :group 'haskell-emacs
   :type 'string)
 
-(defconst haskell-emacs--api-hash
-  (with-temp-buffer
-    (insert-file-contents load-file-name)
-    (insert-file-contents
-     (concat (file-name-directory load-file-name) "HaskellEmacs.hs"))
-    (insert-file-contents
-     (concat (file-name-directory load-file-name) "Foreign/Emacs.hs"))
-    (insert-file-contents
-     (concat (file-name-directory load-file-name) "Foreign/Emacs/Internal.hs"))
-    (sha1 (buffer-string))))
+(defvar haskell-emacs--api-hash)
 (defvar haskell-emacs--count 0)
 (defvar haskell-emacs--function-hash nil)
 (defvar haskell-emacs--fun-list nil)
@@ -244,6 +235,14 @@ If you want to use such functions in your elisp library, do the following:
   ;;; my-nums.el ends here."
   (interactive "p")
   (setq haskell-emacs--module-list (haskell-emacs--search-modules))
+  (setq haskell-emacs--api-hash
+        (with-temp-buffer
+          (mapc (lambda (x) (insert-file-contents (concat haskell-emacs--load-dir x)))
+                '("haskell-emacs.el"
+                  "HaskellEmacs.hs"
+                  "Foreign/Emacs.hs"
+                  "Foreign/Emacs/Internal.hs"))
+          (sha1 (buffer-string))))
   (let* ((first-time (unless (file-directory-p haskell-emacs-dir)
                        (if arg (haskell-emacs--install-dialog)
                          (mkdir haskell-emacs-dir t))))
