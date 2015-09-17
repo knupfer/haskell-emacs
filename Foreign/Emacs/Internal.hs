@@ -23,7 +23,7 @@ instance ToLisp a => ToEmacs a where
   toEmacs = Right . toLisp
 
 instance ToLisp a => ToEmacs (Emacs a) where
-  toEmacs em = Left $ fmap toLisp em
+  toEmacs = Left . fmap toLisp
 
 newtype Emacs a = EmacsInternal
   {fromEmacs :: ReaderT (MVar Lisp, Chan B.ByteString) IO a}
@@ -50,7 +50,7 @@ eval lsp = EmacsInternal $ do
                                            , String "|%S"
                                            , List [ Symbol "haskell-emacs--no-properties"
                                                   , List [ Symbol "list"
-                                                           , List lsp]]]]
+                                                         , List lsp]]]]
               in encode [B.length x] <> x
 
 eval_ :: [Lisp] -> Emacs ()
@@ -58,5 +58,5 @@ eval_ lsp = EmacsInternal $ do
   (_, chan) <- ask
   liftIO $ writeChan chan cmd
   return ()
-  where cmd = let x = encode $ List [Symbol "list", List lsp]
+  where cmd = let x = encode $ List lsp
               in encode [B.length x] <> x
