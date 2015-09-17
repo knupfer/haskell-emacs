@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverlappingInstances       #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Foreign.Emacs.Internal where
 
@@ -26,17 +27,11 @@ instance ToLisp a => ToEmacs (Emacs a) where
 
 newtype Emacs a = EmacsInternal
   {fromEmacs :: ReaderT (MVar Lisp, Chan B.ByteString) IO a}
-
-instance Functor Emacs where
-  fmap f (EmacsInternal r) = EmacsInternal $ fmap f r
-
-instance Applicative Emacs where
-  pure a = EmacsInternal $ pure a
-  (EmacsInternal f) <*> (EmacsInternal x) = EmacsInternal $ f <*> x
-
-instance Monad Emacs where
-  (EmacsInternal x) >>= f = EmacsInternal $ x >>= fromEmacs . f
-  return a = EmacsInternal $ pure a
+  deriving ( Functor
+           , Applicative
+           , Monad
+           , MonadIO
+           )
 
 instance NFData (Emacs Lisp) where
   rnf (EmacsInternal _) = ()
