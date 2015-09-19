@@ -15,6 +15,7 @@ import           Data.AttoLisp
 import qualified Data.ByteString.Lazy.Char8 as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8  as B (length)
 import           Data.Monoid                ((<>))
+import           Data.Text                  (Text)
 
 class ToEmacs a where
   toEmacs :: a -> Either (Emacs Lisp) Lisp
@@ -35,6 +36,30 @@ newtype Emacs a = EmacsInternal
 
 instance NFData (Emacs Lisp) where
   rnf (EmacsInternal _) = ()
+
+data Buffer = Buffer {text :: Text, point :: Int}
+
+modifyBuffer :: (Buffer -> Buffer) -> Emacs ()
+modifyBuffer f = getBuffer >>= putBuffer . f
+
+getBuffer :: Emacs Buffer
+getBuffer = do (t,p,pm) <- eval [ Symbol "list"
+                               , List [ Symbol "buffer-string" ]
+                               , List [ Symbol "point" ]
+                               , List [ Symbol "point-min" ]]
+               return $ Buffer t (p - pm + 1)
+
+putBuffer :: Buffer -> Emacs ()
+putBuffer (Buffer t p) = eval_
+  [ Symbol "list"
+  , List [ Symbol "delete-region"
+         , List [ Symbol "point-min" ]
+         , List [ Symbol "point-max" ]]
+  , List [ Symbol "insert", String t ]
+  , List [ Symbol "goto-char"
+         , List [ Symbol "+"
+                , Number . fromIntegral . max 0 $ p-1
+                , List [ Symbol "point-min" ]]]]
 
 eval :: (ToLisp a, FromLisp a) => [Lisp] -> Emacs a
 eval lsp = EmacsInternal $ do

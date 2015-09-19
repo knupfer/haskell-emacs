@@ -1,6 +1,10 @@
 module Foreign.Emacs
   ( Lisp(..)
   , Emacs
+  , Buffer(..)
+  , getBuffer
+  , putBuffer
+  , modifyBuffer
   , eval
   , eval_
   )

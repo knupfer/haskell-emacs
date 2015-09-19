@@ -174,12 +174,16 @@ data Emacs a
 eval  :: [Lisp] -> Emacs a
 eval_ :: [Lisp] -> Emacs ()
 
-data Lisp
-Symbol  :: Text   -> Lisp
-String  :: Text   -> Lisp
-Number  :: Number -> Lisp
-List    :: [Lisp] -> Lisp
-DotList :: [Lisp] -> Lisp -> Lisp
+data Lisp = Symbol  Text
+          | String  Text
+          | Number  Number
+          | List    [Lisp]
+          | DotList [Lisp] -> Lisp
+
+data Buffer = Buffer {text :: Text, point :: Int}
+getBuffer    :: Emacs Buffer
+putBuffer    :: Buffer -> Emacs ()
+modifyBuffer :: (Buffer -> Buffer) -> Emacs ()
 #+END_SRC
 
 If a function returns a =Lisp= it will be evaluated by emacs.  A
@@ -190,6 +194,20 @@ interleave the dialog with emacs, but return a future which holds the
 result of the function.  Note that when using =eval= you have to
 ensure that the type of the result is inferable, if you perform
 something only for it's effects use =eval_= instead.
+
+In many cases it is the most efficient and elegant solution to write a
+function which transforms a buffer and apply it with =modifyBuffer= to
+emacs.  In this scenario, you'll pay only two times the communication
+costs and make all the calculations with pure and efficient haskell
+functions.  This function respects narrowed buffers, if you want to
+work with the whole buffer, you have to widen it.  It is not
+recommended to call effectful functions like =modifyBuffer=
+asynchronously because it could write the buffer content into another
+buffer if you change it while haskell is calculating.
+
+Note that =Emacs a= is an instance of =MonadIO=, so if you've got dire
+need you can perform arbitrary IO with =liftIO= which will be
+performed sequentially in the =Emacs a=.
 
 #+BEGIN_SRC haskell
   -- /home/foo/.emacs.d/haskell-fun/Test.hs
@@ -279,11 +297,13 @@ comment it.
   {-# LANGUAGE OverloadedStrings #-}
   module Comment ( commentLines1
                  , commentLines2
+                 , uncomment
                  ) where
 
   import           Control.Applicative
   import           Control.Monad
   import           Data.Char
+  import           Data.Maybe
   import           Data.Text           (Text)
   import qualified Data.Text           as T
   import           Foreign.Emacs
@@ -316,6 +336,16 @@ comment it.
   getVar :: Text -> Emacs Lisp
   getVar s = eval [Symbol "identity", Symbol s]
 
+  uncomment :: Emacs ()
+  uncomment = toPrefix <$> majorMode >>= modifyBuffer . strip
+
+  strip :: Text -> Buffer -> Buffer
+  strip p b = Buffer ( T.unlines
+                     . map (fromMaybe <*> T.stripPrefix p)
+                     . T.lines
+                     $ text b
+                     ) 1
+
   -- implementation1
 
   gotoChar :: Int -> Emacs ()
@@ -327,7 +357,7 @@ comment it.
   lookingAt :: Text -> Emacs Bool
   lookingAt s = eval [Symbol "looking-at", String s]
 
-  commentLines1 :: Emacs Text
+  commentLines1 :: Emacs ()
   commentLines1 = do
     prefix <- toPrefix <$> majorMode
     let loop = do hasChr <- not <$> lookingAt "^ *$"
@@ -337,27 +367,25 @@ comment it.
                   when notEof loop
     gotoChar 0
     loop
-    return "Done"
 
   -- implementation2
 
-  bufferString :: Emacs Text
-  bufferString = eval [Symbol "buffer-string"]
-
-  gotoLine :: Int -> Emacs Int
-  gotoLine n = eval [Symbol "goto-line", Number $ fromIntegral n]
+  gotoLine :: Int -> Emacs ()
+  gotoLine n = eval_ [Symbol "goto-line", Number $ fromIntegral n]
 
   notEmpty :: Text -> [Int]
   notEmpty str = [n | (l,n) <- zip (T.lines str) [1..], not $ T.all isSpace l]
 
-  commentLines2 :: Emacs Text
+  commentLines2 :: Emacs ()
   commentLines2 = do prefix <- toPrefix <$> majorMode
-                     ls     <- notEmpty <$> bufferString
+                     ls     <- (notEmpty . text) <$> getBuffer
                      mapM_ (\x -> do gotoLine x
                                      ask <- yOrNP "Comment line?"
                                      when ask $ insert prefix) ls
-                     return "Done"
 #+END_SRC
+=uncomment= strips one layer of comment prefixes from the buffer and
+puts point to the beginning of the buffer.  Note that the function
+=strip= is entirely pure.
 
 The implementation1 is more or less in an imperative style while the
 implementation2 is a lot more functional.  Needless to say you should
@@ -387,7 +415,7 @@ Let's compare the performance using this readme.
       (mapcar (lambda (x) (/ x (apply 'min result))) result)))
 #+END_SRC
 
-The first implementation takes 20% more time, even though the second
+The first implementation takes 50% more time, even though the second
 has to transfer the whole buffer.
 
 Note that in such a trivial case a function written in elisp would be
