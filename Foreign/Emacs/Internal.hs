@@ -44,9 +44,9 @@ modifyBuffer f = getBuffer >>= putBuffer . f
 
 getBuffer :: Emacs Buffer
 getBuffer = do (t,p,pm) <- eval [ Symbol "list"
-                               , List [ Symbol "buffer-string" ]
-                               , List [ Symbol "point" ]
-                               , List [ Symbol "point-min" ]]
+                                , List [ Symbol "buffer-string" ]
+                                , List [ Symbol "point" ]
+                                , List [ Symbol "point-min" ]]
                return $ Buffer t (p - pm + 1)
 
 putBuffer :: Buffer -> Emacs ()
@@ -58,7 +58,7 @@ putBuffer (Buffer t p) = eval_
   , List [ Symbol "insert", String t ]
   , List [ Symbol "goto-char"
          , List [ Symbol "+"
-                , Number . fromIntegral . max 0 $ p-1
+                , Number . fromIntegral $ p-1
                 , List [ Symbol "point-min" ]]]]
 
 eval :: (ToLisp a, FromLisp a) => [Lisp] -> Emacs a
@@ -82,6 +82,5 @@ eval_ :: [Lisp] -> Emacs ()
 eval_ lsp = EmacsInternal $ do
   (_, chan) <- ask
   liftIO $ writeChan chan cmd
-  return ()
   where cmd = let x = encode $ List lsp
               in encode [B.length x] <> x
