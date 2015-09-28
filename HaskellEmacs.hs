@@ -186,11 +186,14 @@ arityFormat = ("++"++) . prettyPrint
 -- | Retrieve the name and a list of exported functions of a haskell module.
 -- It should use 'parseFileContents' to take pragmas into account.
 exportsGet :: String -> Either String (ModuleName, [Name])
-exportsGet content = case parseFileContents content of
+exportsGet content = case parseSrc of
   ParseOk (Module _ name _ _ header _ decls)
     -> Right . (,) name $ maybe (exportsFromDecls decls)
                                  exportsFromHeader header
   ParseFailed _ msg -> Left msg
+  where parseSrc = parseFileContentsWithMode
+                     defaultParseMode {fixities = Nothing}
+                     content
 
 exportsFromDecls :: [Decl] -> [Name]
 exportsFromDecls = mapMaybe declarationNames
