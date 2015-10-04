@@ -258,9 +258,15 @@ Read C-h f haskell-emacs-init for more instructions")
   "Take XS and remove recursively all text properties."
   (if (stringp xs)
       (substring-no-properties xs)
-    (if (listp xs)
-        (mapcar 'haskell-emacs--no-properties xs)
-      xs)))
+    (if (ring-p xs)
+        (haskell-emacs--no-properties (ring-elements xs))
+      (if (or (listp xs) (vectorp xs) (bool-vector-p xs))
+          (mapcar 'haskell-emacs--no-properties xs)
+        (if (hash-table-p xs)
+            (let ((pairs))
+              (maphash (lambda (k v) (push (list k v) pairs)) xs)
+              (haskell-emacs--no-properties pairs))
+          xs)))))
 
 (defun haskell-emacs--fun-wrapper (fun args docs)
   "Take FUN with ARGS and return wrappers in elisp with the DOCS."

@@ -3,6 +3,7 @@
 module HaskellEmacsTest where
 
 import           Control.Monad
+import           Data.Char
 import qualified Data.Text        as T
 import           External.NBody
 import           Foreign.Emacs
@@ -55,6 +56,17 @@ allTrue = and
 
 anyTrue :: [Bool] -> Bool
 anyTrue = or
+
+-- Char
+
+nextChar :: Char -> Char
+nextChar = chr . succ . ord
+
+-- Lisp
+
+symbolReverse :: Lisp -> Lisp
+symbolReverse (Symbol s) = Symbol $ T.reverse s
+symbolReverse x          = x
 
 -- Num
 
