@@ -212,7 +212,7 @@ fromName (S.Symbol str) = str
 fromName (S.Ident  str) = str
 
 exportFunction :: ExportSpec -> Maybe Name
-exportFunction (EVar _ qname)      = unQualifiedName qname
+exportFunction (EVar qname)      = unQualifiedName qname
 exportFunction (EModuleContents _) = Nothing
 exportFunction _                   = Nothing
 
