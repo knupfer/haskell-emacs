@@ -484,7 +484,7 @@ Not all types marshal across languages, if you write a function with
 an unknown type, =haskell-emacs-init= will signal an error with the
 output from GHC.
 
-Higher functions aren't supported at all, you can't pass functions as
+Higher-order functions aren't supported at all, you can't pass functions as
 arguments to Haskell functions in emacs.
 * Contribute
 I highly encourage contributions of all sorts.  If you notice a
