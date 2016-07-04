@@ -10,6 +10,8 @@
 
 ;;; Code:
 
+(setq debug-on-error t)
+
 (let ((load-dir (file-name-directory load-file-name)))
   (add-to-list 'load-path load-dir)
   (add-to-list 'load-path (progn (string-match ".*haskell-emacs/" load-dir)
