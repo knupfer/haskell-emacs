@@ -344,10 +344,10 @@ name:                HaskellEmacs
 version:             0.0.0
 build-type:          Simple
 cabal-version:       >=1.10
+license:             GPL-2
 executable HaskellEmacs
   main-is:             HaskellEmacs.hs
   default-language:    Haskell2010
-  license:             GPL-2
   ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , atto-lisp
