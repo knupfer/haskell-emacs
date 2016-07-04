@@ -71,6 +71,12 @@ which =haskell-emacs= cannot marshal to the correct type. Please keep in
 mind that Emacs Lisp Arrays will be translated (recursively) to
 Haskell Lists and Emacs Lisp Lists will be marshaled to either Haskell
 Lists or Haskell Tuples.
+
+Note that if you modify Matrix.hs or add new files you have to rerun
+=haskell-emacs-init=.  If you remove a function from a module or an
+entire module, the lisp function will still be bound untill the next
+restart of emacs but produce undefined behaviour.
+
 * Build tools
 You can use your favorite build tool.  Nix, stack and cabal are
 supported out of the box.  If you don't specify which one to use via
