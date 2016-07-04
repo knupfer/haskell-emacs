@@ -403,22 +403,24 @@ executable HaskellEmacs
                            (call-process "cabal" nil heB nil "install")))
                (if (eq tool 'stack)
                    (progn (setq haskell-emacs--bin (concat "~/.local/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
-                          (with-temp-buffer
-                            (insert "
+                          (unless (file-exists-p (concat haskell-emacs-dir "stack.yaml"))
+                            (with-temp-buffer
+                              (insert "
 resolver: lts-6.6
 packages:
 - '.'
 extra-deps: [ atto-lisp-0.2.2.2 ]")
-                            (write-file (concat haskell-emacs-dir "stack.yaml")))
+                              (write-file (concat haskell-emacs-dir "stack.yaml"))))
                           (message "Compiling ...")
                           (+ (call-process "stack" nil heB nil "setup")
                              (call-process "stack" nil heB nil "install")))
                  (if (eq tool 'nix)
                      (progn (setq haskell-emacs--bin (concat haskell-emacs-dir "result/bin/HaskellEmacs"))
-                            (with-temp-buffer (insert "
+                            (unless (file-exists-p (concat haskell-emacs-dir "default.nix"))
+                              (with-temp-buffer (insert "
 { nixpkgs ? import <nixpkgs> {} }:
 nixpkgs.pkgs.haskellPackages.callPackage ./HaskellEmacs.nix { }")
-                                              (write-file (concat haskell-emacs-dir "default.nix")))
+                                                (write-file (concat haskell-emacs-dir "default.nix"))))
                             (message "Compiling ...")
                             (+ (call-process "nix-shell" nil heB nil "-p" "--pure" "cabal2nix" "--command" "cabal2nix . > HaskellEmacs.nix")
                                (call-process "nix-build" nil heB nil))))))))
