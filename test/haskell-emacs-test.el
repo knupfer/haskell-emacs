@@ -19,7 +19,10 @@
                 (format "out%s/"
                         (+ 1 (length (directory-files load-dir
                                                       nil
-                                                      "^out[0-9]+$")))))))
+                                                      "^out[0-9]+$"))))))
+  (mkdir haskell-emacs-dir t)
+  (copy-file (concat load-dir "HaskellEmacsTest.hs") haskell-emacs-dir)
+  (copy-directory (concat load-dir "External") haskell-emacs-dir))
 
 (require 'haskell-emacs)
 

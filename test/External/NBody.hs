@@ -69,12 +69,12 @@ offsetMomentum p (px,py,pz) = p {
                                 }
 
 nbodyInit pPlanets = do
-    let init (px,py,pz) i = do
-        if i < length planets
-            then do
-                p <- peekElemOff pPlanets i
-                init (px + vx p * mass p,py + vy p * mass p, pz + vz p * mass p) (i+1)
-            else return (px,py,pz)
+    let init (px,py,pz) i =
+            if i < length planets
+                then do
+                    p <- peekElemOff pPlanets i
+                    init (px + vx p * mass p,py + vy p * mass p, pz + vz p * mass p) (i+1)
+                else return (px,py,pz)
     s <- init (0,0,0) 0
     p <- peek pPlanets
     poke pPlanets $ offsetMomentum p s

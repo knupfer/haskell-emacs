@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverlappingInstances       #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
@@ -23,7 +22,7 @@ class ToEmacs a where
 instance ToLisp a => ToEmacs a where
   toEmacs = Right . toLisp
 
-instance ToLisp a => ToEmacs (Emacs a) where
+instance {-# OVERLAPS #-} ToLisp a => ToEmacs (Emacs a) where
   toEmacs = Left . fmap toLisp
 
 newtype Emacs a = EmacsInternal

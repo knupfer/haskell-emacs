@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 
-;; haskell-emacs is a library which allows extending emacs in haskell.
+;; haskell-emacs is a library which allows extending Emacs in haskell.
 ;; It provides an FFI (foreign function interface) for haskell functions.
 
 ;; Run `haskell-emacs-init' or put it into your .emacs.  Afterwards just
@@ -50,23 +50,15 @@
   :group 'haskell-emacs
   :type 'string)
 
-(defcustom haskell-emacs-ghc-flags '("-O2" "-threaded" "--make"
-                                     "-with-rtsopts=-N")
-  "Flags which are used for compilation."
-  :group 'haskell-emacs
-  :type '(repeat string))
+(defcustom haskell-emacs-build-tool 'auto
+ "Build tool for haskell-emacs.  Auto tries nix, stack and cabal in order."
+ :group 'haskell-emacs
+ :type '(choice (const auto)
+                (const nix)
+                (const stack)
+                (const cabal)))
 
-(defcustom haskell-emacs-nix-shell-args
-  '("-p")
-  "Environment used to compile the modules when on an nixos machine."
-  :group 'haskell-emacs
-  :type '(repeat string))
-
-(defcustom haskell-emacs-ghc-executable "ghc"
-  "Executable used for compilation."
-  :group 'haskell-emacs
-  :type 'string)
-
+(defvar haskell-emacs--bin nil)
 (defvar haskell-emacs--api-hash)
 (defvar haskell-emacs--count 0)
 (defvar haskell-emacs--function-hash nil)
@@ -75,20 +67,13 @@
   (when (eq system-type 'gnu/linux)
     (string-match " nixos " (shell-command-to-string "uname -a"))))
 (defvar haskell-emacs--load-dir (file-name-directory load-file-name))
-(defvar haskell-emacs--module-list nil)
 (defvar haskell-emacs--proc nil)
 (defvar haskell-emacs--response nil)
 (defvar haskell-emacs--table (make-hash-table))
 
-(defun haskell-emacs--search-modules ()
-  "Search haskell-emacs modules in the `load-path'."
-  (let ((modules))
-    (mapc (lambda (x)
-            (when (file-directory-p x)
-              (mapc (lambda (y) (add-to-list 'modules (file-name-directory y)))
-                    (directory-files x t "^haskell-emacs-.*\.el"))))
-            load-path)
-    modules))
+(defun haskell-emacs-filter (p xs)
+  "Filter elements which satisfy P in XS."
+  (delq nil (mapcar (lambda (x) (and (funcall p x) x)) xs)))
 
 ;;;###autoload
 (defun haskell-emacs-help ()
@@ -107,7 +92,6 @@
 When ARG, force installation dialog.
 Call `haskell-emacs-help' to read the documentation."
   (interactive "p")
-  (setq haskell-emacs--module-list (haskell-emacs--search-modules))
   (setq haskell-emacs--api-hash
         (with-temp-buffer
           (mapc (lambda (x) (insert-file-contents (concat haskell-emacs--load-dir x)))
@@ -119,17 +103,14 @@ Call `haskell-emacs-help' to read the documentation."
   (let* ((first-time (unless (file-directory-p haskell-emacs-dir)
                        (if arg (haskell-emacs--install-dialog)
                          (mkdir haskell-emacs-dir t))))
-         (funs (apply 'append
-                      (mapcar (lambda (x) (directory-files x t "^[^.].*\.hs$"))
-                              (apply 'list haskell-emacs-dir
-                                     haskell-emacs--module-list))))
+         (funs (haskell-emacs-filter (lambda (x) (not (or (equal (file-name-nondirectory x) "HaskellEmacs.hs")
+                                                          (equal (file-name-nondirectory x) "Setup.hs"))))
+                                     (directory-files haskell-emacs-dir t ".+\.hs$")))
          (process-connection-type nil)
          (arity-list)
          (docs)
          (has-changed t)
-         (heF ".HaskellEmacs.hs")
-         (heE (concat haskell-emacs-dir ".HaskellEmacs"
-                      (when (eq system-type 'windows-nt) ".exe")))
+         (heF "HaskellEmacs.hs")
          (code (with-temp-buffer
                  (insert-file-contents
                   (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
@@ -141,7 +122,7 @@ Call `haskell-emacs-help' to read the documentation."
          (start-proc
           '(progn
              (setq haskell-emacs--proc
-                   (start-process "hask" nil heE))
+                   (start-process "hask" nil haskell-emacs--bin))
              (set-process-filter haskell-emacs--proc
                                  'haskell-emacs--filter)
              (set-process-query-on-exit-flag haskell-emacs--proc nil)
@@ -154,12 +135,11 @@ Call `haskell-emacs-help' to read the documentation."
     (setq haskell-emacs--function-hash
           (with-temp-buffer (mapc 'insert-file-contents funs)
                             (insert haskell-emacs-dir
-                                    (format "%S" haskell-emacs-ghc-flags)
-                                    (format "%S" haskell-emacs-nix-shell-args)
-                                    haskell-emacs-ghc-executable)
+                                    (format "%S" haskell-emacs-build-tool))
                             (sha1 (buffer-string))))
     (setq has-changed
-          (not (and (file-exists-p heE)
+          (not (and haskell-emacs--bin
+                    (file-exists-p haskell-emacs--bin)
                     (with-temp-buffer
                       (insert-file-contents (concat haskell-emacs-dir heF))
                       (and (re-search-forward haskell-emacs--api-hash
@@ -292,40 +272,13 @@ Read C-h f haskell-emacs-init for more instructions")
 
 (defun haskell-emacs--install-dialog ()
   "Run the installation dialog."
-  (cl-flet ((cabal (&rest ARGS)
-                   (with-temp-buffer
-                     (when (file-exists-p haskell-emacs-dir)
-                       (cd haskell-emacs-dir))
-                     (if (= 0 (apply 'call-process "cabal" nil t nil ARGS))
-                         (buffer-string)
-                       (error (buffer-string))))))
-    (let* ((sandbox (unless (version< (substring (cabal "--numeric-version") 0 -1)
-                                      "1.18")
-                        (yes-or-no-p "Create a cabal sandbox? ")))
-             (install (yes-or-no-p "Cabal install the dependencies? "))
-             (update  (when install (yes-or-no-p "Update cabal packages? ")))
-             (example (yes-or-no-p "Add a simple example? ")))
-        (mkdir haskell-emacs-dir t)
-        (when sandbox
-          (message "Creating sandbox...")
-          (cabal "sandbox" "init"))
-        (when update
-          (message "Updating cabal packages...")
-          (cabal "update"))
-        (when install
-          (message "Installing dependencies...")
-          (mapc (lambda (x) (message (concat "Installing " x "..."))
-                  (cabal "install" x))
-                '("happy" "haskell-src-exts" "parallel" "utf8-string"))
-          (message "Installing atto-lisp...")
-          (if (version< (substring (shell-command-to-string
-                                      "ghc --numeric-version") 0 -1)
-                          "7.10")
-                (cabal "install" "atto-lisp")
-              (cabal "install" "--allow-newer=deepseq,blaze-builder" "atto-lisp")))
-        (if example
-            (with-temp-buffer
-              (insert "
+  (let ((example (yes-or-no-p "Add a simple example? ")))
+    (unless (yes-or-no-p (format "Is %s the correct build tool? " (haskell-emacs--get-build-tool)))
+      (error "Please customize `haskell-emacs-build-tool` and try again"))
+    (mkdir haskell-emacs-dir t)
+    (if example
+        (with-temp-buffer
+          (insert "
 module Matrix where
 
 import qualified Data.List as L
@@ -347,9 +300,9 @@ isIdentity xs = xs == identity (length xs)
 -- | Compute the dyadic product of two vectors.
 dyadic :: [Int] -> [Int] -> [[Int]]
 dyadic xs ys = map (\\x -> map (x*) ys) xs")
-              (write-file (concat haskell-emacs-dir "Matrix.hs"))
-              "example")
-          "no-example"))))
+          (write-file (concat haskell-emacs-dir "Matrix.hs"))
+          "example")
+      "no-example")))
 
 (defun haskell-emacs--get (id)
   "Retrieve result from haskell process with ID."
@@ -365,12 +318,6 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
         (eval res)
       res)))
 
-(defun haskell-emacs--find-package-db ()
-  "Search for the package dir in a cabal sandbox."
-  (let ((sandbox (concat haskell-emacs-dir ".cabal-sandbox")))
-    (when (file-directory-p sandbox)
-      (car (directory-files sandbox t "packages\.conf\.d$")))))
-
 (defun haskell-emacs--compile (code)
   "Use CODE to compile a new haskell Emacs programm."
   (when haskell-emacs--proc
@@ -378,16 +325,11 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
     (delete-process haskell-emacs--proc))
   (with-temp-buffer
     (let* ((heB "*HASKELL-BUFFER*")
-           (heF ".HaskellEmacs.hs")
+           (heF "HaskellEmacs.hs")
            (code (concat
                   "-- hash of haskell-emacs: " haskell-emacs--api-hash "\n"
                   "-- hash of all functions: " haskell-emacs--function-hash
-                  "\n" code))
-           (package-db (haskell-emacs--find-package-db))
-           (haskell-emacs-ghc-flags
-            (if package-db
-                (cons (concat "-package-db=" package-db) haskell-emacs-ghc-flags)
-              haskell-emacs-ghc-flags)))
+                  "\n" code)))
       (cd haskell-emacs-dir)
       (unless (and (file-exists-p heF)
                    (equal code (with-temp-buffer (insert-file-contents heF)
@@ -395,20 +337,43 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
         (insert code)
         (write-file heF)
         (mkdir (concat haskell-emacs-dir "Foreign/Emacs/") t)
+        (unless (file-exists-p "HaskellEmacs.cabal")
+          (with-temp-buffer
+            (insert "
+name:                HaskellEmacs
+version:             0.0.0
+build-type:          Simple
+cabal-version:       >=1.10
+executable HaskellEmacs
+  main-is:             HaskellEmacs.hs
+  default-language:    Haskell2010
+  license:             GPL-2
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , atto-lisp
+                     , parallel
+                     , text
+                     , utf8-string
+                     , bytestring
+                     , mtl
+                     , deepseq
+                     , transformers
+                     , atto-lisp
+                     , haskell-src-exts
+                     , containers
+                     , attoparsec")
+            (write-file "HaskellEmacs.cabal")))
         (with-temp-buffer
           (insert-file-contents (concat (file-name-directory haskell-emacs--load-dir)
                                         "Foreign/Emacs.hs"))
-          (write-file (concat haskell-emacs-dir "Foreign/Emacs.hs")))
+          (write-file "Foreign/Emacs.hs"))
         (with-temp-buffer
           (insert-file-contents (concat (file-name-directory haskell-emacs--load-dir)
                                         "Foreign/Emacs/Internal.hs"))
-          (write-file (concat haskell-emacs-dir "Foreign/Emacs/Internal.hs"))))
-      (message "Compiling ...")
-      (haskell-emacs--compile-command heF heB)))
+          (write-file "Foreign/Emacs/Internal.hs")))
+      (haskell-emacs--compile-command heB)))
   (setq haskell-emacs--proc
-        (start-process "hask" nil
-                       (concat haskell-emacs-dir ".HaskellEmacs"
-                               (when (eq system-type 'windows-nt) ".exe"))))
+        (start-process "hask" nil haskell-emacs--bin))
   (set-process-filter haskell-emacs--proc 'haskell-emacs--filter)
   (set-process-query-on-exit-flag haskell-emacs--proc nil)
   (set-process-sentinel haskell-emacs--proc
@@ -416,33 +381,51 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
                           (let ((debug-on-error t))
                             (error "Haskell-emacs crashed")))))
 
-(defun haskell-emacs--compile-command (heF heB)
-  "Run the compilation for file HEF with buffer HEB."
-  (let ((args (cons heF (if haskell-emacs--module-list
-                            (cons (concat
-                                   "-i"
-                                   (substring
-                                    (apply
-                                     'concat
-                                     (mapcar (lambda (x) (concat ":" x))
-                                             haskell-emacs--module-list)) 1))
-                                  haskell-emacs-ghc-flags)
-                          haskell-emacs-ghc-flags))))
-    (if (eql 0 (apply 'call-process (if haskell-emacs--is-nixos "nix-shell"
-                                      haskell-emacs-ghc-executable)
-                      nil heB nil
-                      (if haskell-emacs--is-nixos
-                          (append haskell-emacs-nix-shell-args
-                                  (list
-                                   "--command"
-                                   (apply 'concat haskell-emacs-ghc-executable
-                                          (mapcar (lambda (x) (concat " " x))
-                                                  args))))
-                        args)))
-        (kill-buffer heB)
-      (let ((bug (with-current-buffer heB (buffer-string))))
-        (kill-buffer heB)
-        (error bug)))))
+(defun haskell-emacs--get-build-tool ()
+  "Guess the build tool."
+  (if (eq haskell-emacs-build-tool 'auto)
+      (if (executable-find "nix-shell") 'nix
+        (if (executable-find "stack") 'stack
+          (if (and (executable-find "cabal")
+                   (executable-find "ghc")) 'cabal
+            (error "Couldn't find nix-shell or stack or (cabal and ghc) in path"))))
+    haskell-emacs-build-tool))
+
+(defun haskell-emacs--compile-command (heB)
+  "Compile haskell-emacs with buffer HEB."
+  (if (eql 0
+           (let ((tool (haskell-emacs--get-build-tool)))
+             (if (eq tool 'cabal)
+                 (progn (setq haskell-emacs--bin (concat haskell-emacs-dir ".cabal-sandbox/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
+                        (message "Compiling ...")
+                        (+ (call-process "cabal" nil heB nil "sandbox" "init")
+                           (call-process "cabal" nil heB nil "install" "happy")
+                           (call-process "cabal" nil heB nil "install")))
+               (if (eq tool 'stack)
+                   (progn (setq haskell-emacs--bin (concat "~/.local/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
+                          (with-temp-buffer
+                            (insert "
+resolver: lts-6.6
+packages:
+- '.'
+extra-deps: [ atto-lisp-0.2.2.2 ]")
+                            (write-file (concat haskell-emacs-dir "stack.yaml")))
+                          (message "Compiling ...")
+                          (+ (call-process "stack" nil heB nil "setup")
+                             (call-process "stack" nil heB nil "install")))
+                 (if (eq tool 'nix)
+                     (progn (setq haskell-emacs--bin (concat haskell-emacs-dir "result/bin/HaskellEmacs"))
+                            (with-temp-buffer (insert "
+{ nixpkgs ? import <nixpkgs> {} }:
+nixpkgs.pkgs.haskellPackages.callPackage ./HaskellEmacs.nix { }")
+                                              (write-file (concat haskell-emacs-dir "default.nix")))
+                            (message "Compiling ...")
+                            (+ (call-process "nix-shell" nil heB nil "-p" "--pure" "cabal2nix" "--command" "cabal2nix . > HaskellEmacs.nix")
+                               (call-process "nix-build" nil heB nil))))))))
+      (kill-buffer heB)
+    (let ((bug (with-current-buffer heB (buffer-string))))
+      (kill-buffer heB)
+      (error bug))))
 
 (provide 'haskell-emacs)
 
