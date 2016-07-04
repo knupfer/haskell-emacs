@@ -105,7 +105,7 @@ Call `haskell-emacs-help' to read the documentation."
                          (mkdir haskell-emacs-dir t))))
          (funs (haskell-emacs-filter (lambda (x) (not (or (equal (file-name-nondirectory x) "HaskellEmacs.hs")
                                                           (equal (file-name-nondirectory x) "Setup.hs"))))
-                                     (directory-files haskell-emacs-dir t ".+\.hs$")))
+                                     (directory-files haskell-emacs-dir t "^[^.].+\.hs$")))
          (process-connection-type nil)
          (arity-list)
          (docs)
