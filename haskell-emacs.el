@@ -115,6 +115,7 @@ Call `haskell-emacs-help' to read the documentation."
                  (insert-file-contents
                   (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
                  (buffer-string))))
+    (haskell-emacs--set-bin)
     (haskell-emacs--stop-proc)
     (setq haskell-emacs--response nil)
     (setq haskell-emacs--function-hash
@@ -390,14 +391,12 @@ executable HaskellEmacs
   (if (eql 0
            (let ((tool (haskell-emacs--get-build-tool)))
              (if (eq tool 'cabal)
-                 (progn (setq haskell-emacs--bin (concat haskell-emacs-dir ".cabal-sandbox/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
-                        (message "Compiling ...")
+                 (progn (message "Compiling ...")
                         (+ (call-process "cabal" nil heB nil "sandbox" "init")
                            (call-process "cabal" nil heB nil "install" "happy")
                            (call-process "cabal" nil heB nil "install")))
                (if (eq tool 'stack)
-                   (progn (setq haskell-emacs--bin (concat "~/.local/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
-                          (unless (file-exists-p (concat haskell-emacs-dir "stack.yaml"))
+                   (progn (unless (file-exists-p (concat haskell-emacs-dir "stack.yaml"))
                             (with-temp-buffer
                               (insert "
 resolver: lts-6.6
@@ -409,8 +408,7 @@ extra-deps: [ atto-lisp-0.2.2.2 ]")
                           (+ (call-process "stack" nil heB nil "setup")
                              (call-process "stack" nil heB nil "install")))
                  (if (eq tool 'nix)
-                     (progn (setq haskell-emacs--bin (concat haskell-emacs-dir "result/bin/HaskellEmacs"))
-                            (unless (file-exists-p (concat haskell-emacs-dir "default.nix"))
+                     (progn (unless (file-exists-p (concat haskell-emacs-dir "default.nix"))
                               (with-temp-buffer (insert "
 { nixpkgs ? import <nixpkgs> {} }:
 nixpkgs.pkgs.haskellPackages.callPackage ./HaskellEmacs.nix { }")
@@ -422,6 +420,19 @@ nixpkgs.pkgs.haskellPackages.callPackage ./HaskellEmacs.nix { }")
     (let ((bug (with-current-buffer heB (buffer-string))))
       (kill-buffer heB)
       (error bug))))
+
+(defun haskell-emacs--set-bin ()
+  "Set the path of the executable."
+  (setq haskell-emacs--bin
+        (let ((tool (haskell-emacs--get-build-tool)))
+          (if (eq tool 'nix)
+              (concat haskell-emacs-dir "result/bin/HaskellEmacs")
+            (if (eq tool 'stack)
+                (concat "~/.local/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe"))
+              (when (eq tool 'cabal)
+                (concat haskell-emacs-dir
+                        ".cabal-sandbox/bin/HaskellEmacs"
+                        (when (eq system-type 'windows-nt) ".exe"))))))))
 
 (provide 'haskell-emacs)
 
