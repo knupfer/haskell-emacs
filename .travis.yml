@@ -2,17 +2,15 @@ language: bash
 
 sudo: required
 
-matrix:
-  include:
-    - env: NIXCHAN=15.09
-    - env: NIXCHAN=16.03
-    - env: NIXCHAN=unstable
+env:
+ - NIXCHAN=15.09
+ - NIXCHAN=16.03
+ - NIXCHAN=unstable
 
 install:
  - curl https://nixos.org/nix/install | sh
  - source /home/travis/.nix-profile/etc/profile.d/nix.sh
- - nix-channel --add https://nixos.org/channels/nixos-$NIXCHAN nixpkgs
- - nix-channel --update
+ - export NIX_PATH=https://nixos.org/channels/nixos-$NIXCHAN/nixexprs.tar.xz
 
 script:
  - nix-shell -Q --pure -p haskellPackages.hlint           --command "hlint HaskellEmacs.hs"
