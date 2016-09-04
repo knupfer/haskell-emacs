@@ -114,23 +114,9 @@ Call `haskell-emacs-help' to read the documentation."
          (code (with-temp-buffer
                  (insert-file-contents
                   (concat haskell-emacs--load-dir "HaskellEmacs.hs"))
-                 (buffer-string)))
-         (stop-proc
-          '(when haskell-emacs--proc
-             (set-process-sentinel haskell-emacs--proc nil)
-             (delete-process haskell-emacs--proc)))
-         (start-proc
-          '(progn
-             (setq haskell-emacs--proc
-                   (start-process "hask" nil haskell-emacs--bin))
-             (set-process-filter haskell-emacs--proc
-                                 'haskell-emacs--filter)
-             (set-process-query-on-exit-flag haskell-emacs--proc nil)
-             (set-process-sentinel haskell-emacs--proc
-                                   (lambda (proc sign)
-                                     (let ((debug-on-error t))
-                                       (error "Haskell-emacs crashed")))))))
-    (eval stop-proc)
+                 (buffer-string))))
+    (haskell-emacs--set-bin)
+    (haskell-emacs--stop-proc)
     (setq haskell-emacs--response nil)
     (setq haskell-emacs--function-hash
           (with-temp-buffer (mapc 'insert-file-contents funs)
@@ -147,7 +133,7 @@ Call `haskell-emacs-help' to read the documentation."
                            (re-search-forward haskell-emacs--function-hash
                                               nil t))))))
     (when has-changed (haskell-emacs--compile code))
-    (eval start-proc)
+    (haskell-emacs--start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
                                      (insert-file-contents f)
                                      (buffer-string)))
@@ -155,7 +141,7 @@ Call `haskell-emacs-help' to read the documentation."
           docs (apply 'concat funs)
           funs (haskell-emacs--fun-body 'allExports (apply 'list "" "" funs)))
     (when (stringp funs)
-      (eval stop-proc)
+      (haskell-emacs--stop-proc)
       (error funs))
     (setq docs (haskell-emacs--fun-body
                 'getDocumentation
@@ -318,11 +304,26 @@ dyadic xs ys = map (\\x -> map (x*) ys) xs")
         (eval res)
       res)))
 
-(defun haskell-emacs--compile (code)
-  "Use CODE to compile a new haskell Emacs programm."
+(defun haskell-emacs--start-proc ()
+  "Start an haskell-emacs process."
+  (setq haskell-emacs--proc (start-process "hask" nil haskell-emacs--bin))
+  (set-process-filter haskell-emacs--proc 'haskell-emacs--filter)
+  (set-process-query-on-exit-flag haskell-emacs--proc nil)
+  (set-process-sentinel
+   haskell-emacs--proc
+   (lambda (proc sign)
+     (let ((debug-on-error t))
+       (error "Haskell-emacs crashed")))))
+
+(defun haskell-emacs--stop-proc ()
+  "Stop haskell-emacs process."
   (when haskell-emacs--proc
     (set-process-sentinel haskell-emacs--proc nil)
-    (delete-process haskell-emacs--proc))
+    (kill-process haskell-emacs--proc)
+    (setq haskell-emacs--proc nil)))
+
+(defun haskell-emacs--compile (code)
+  "Use CODE to compile a new haskell Emacs programm."
   (with-temp-buffer
     (let* ((heB "*HASKELL-BUFFER*")
            (heF "HaskellEmacs.hs")
@@ -371,15 +372,9 @@ executable HaskellEmacs
           (insert-file-contents (concat (file-name-directory haskell-emacs--load-dir)
                                         "Foreign/Emacs/Internal.hs"))
           (write-file "Foreign/Emacs/Internal.hs")))
-      (haskell-emacs--compile-command heB)))
-  (setq haskell-emacs--proc
-        (start-process "hask" nil haskell-emacs--bin))
-  (set-process-filter haskell-emacs--proc 'haskell-emacs--filter)
-  (set-process-query-on-exit-flag haskell-emacs--proc nil)
-  (set-process-sentinel haskell-emacs--proc
-                        (lambda (proc sign)
-                          (let ((debug-on-error t))
-                            (error "Haskell-emacs crashed")))))
+      (haskell-emacs--stop-proc)
+      (haskell-emacs--compile-command heB)
+      (haskell-emacs--start-proc))))
 
 (defun haskell-emacs--get-build-tool ()
   "Guess the build tool."
@@ -396,14 +391,12 @@ executable HaskellEmacs
   (if (eql 0
            (let ((tool (haskell-emacs--get-build-tool)))
              (if (eq tool 'cabal)
-                 (progn (setq haskell-emacs--bin (concat haskell-emacs-dir ".cabal-sandbox/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
-                        (message "Compiling ...")
+                 (progn (message "Compiling ...")
                         (+ (call-process "cabal" nil heB nil "sandbox" "init")
                            (call-process "cabal" nil heB nil "install" "happy")
                            (call-process "cabal" nil heB nil "install")))
                (if (eq tool 'stack)
-                   (progn (setq haskell-emacs--bin (concat "~/.local/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe")))
-                          (unless (file-exists-p (concat haskell-emacs-dir "stack.yaml"))
+                   (progn (unless (file-exists-p (concat haskell-emacs-dir "stack.yaml"))
                             (with-temp-buffer
                               (insert "
 resolver: lts-6.6
@@ -415,8 +408,7 @@ extra-deps: [ atto-lisp-0.2.2.2 ]")
                           (+ (call-process "stack" nil heB nil "setup")
                              (call-process "stack" nil heB nil "install")))
                  (if (eq tool 'nix)
-                     (progn (setq haskell-emacs--bin (concat haskell-emacs-dir "result/bin/HaskellEmacs"))
-                            (unless (file-exists-p (concat haskell-emacs-dir "default.nix"))
+                     (progn (unless (file-exists-p (concat haskell-emacs-dir "default.nix"))
                               (with-temp-buffer (insert "
 { nixpkgs ? import <nixpkgs> {} }:
 nixpkgs.pkgs.haskellPackages.callPackage ./HaskellEmacs.nix { }")
@@ -428,6 +420,19 @@ nixpkgs.pkgs.haskellPackages.callPackage ./HaskellEmacs.nix { }")
     (let ((bug (with-current-buffer heB (buffer-string))))
       (kill-buffer heB)
       (error bug))))
+
+(defun haskell-emacs--set-bin ()
+  "Set the path of the executable."
+  (setq haskell-emacs--bin
+        (let ((tool (haskell-emacs--get-build-tool)))
+          (if (eq tool 'nix)
+              (concat haskell-emacs-dir "result/bin/HaskellEmacs")
+            (if (eq tool 'stack)
+                (concat "~/.local/bin/HaskellEmacs" (when (eq system-type 'windows-nt) ".exe"))
+              (when (eq tool 'cabal)
+                (concat haskell-emacs-dir
+                        ".cabal-sandbox/bin/HaskellEmacs"
+                        (when (eq system-type 'windows-nt) ".exe"))))))))
 
 (provide 'haskell-emacs)
 
