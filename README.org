@@ -188,7 +188,7 @@ data Lisp = Symbol  Text
           | String  Text
           | Number  Number
           | List    [Lisp]
-          | DotList [Lisp] -> Lisp
+          | DotList [Lisp] Lisp
 
 data Buffer = Buffer {text :: Text, point :: Int}
 getBuffer    :: Emacs Buffer
