@@ -399,10 +399,13 @@ executable HaskellEmacs
                    (progn (unless (file-exists-p (concat haskell-emacs-dir "stack.yaml"))
                             (with-temp-buffer
                               (insert "
-resolver: lts-6.6
+resolver: lts-20.11
 packages:
 - '.'
-extra-deps: [ atto-lisp-0.2.2.2 ]")
+extra-deps:
+- github: francesquini/atto-lisp
+  commit: 756aca2d8bdf7264cae3d55b34a1e921f57b4a87
+")
                               (write-file (concat haskell-emacs-dir "stack.yaml"))))
                           (message "Compiling ...")
                           (+ (call-process "stack" nil heB nil "setup")
