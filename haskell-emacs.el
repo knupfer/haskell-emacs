@@ -92,6 +92,8 @@
 When ARG, force installation dialog.
 Call `haskell-emacs-help' to read the documentation."
   (interactive "p")
+
+  ;; Stores haskell-emacs package version hash
   (setq haskell-emacs--api-hash
         (with-temp-buffer
           (mapc (lambda (x) (insert-file-contents (concat haskell-emacs--load-dir x)))
@@ -100,6 +102,8 @@ Call `haskell-emacs-help' to read the documentation."
                   "Foreign/Emacs.hs"
                   "Foreign/Emacs/Internal.hs"))
           (sha1 (buffer-string))))
+
+
   (let* ((first-time (unless (file-directory-p haskell-emacs-dir)
                        (if arg (haskell-emacs--install-dialog)
                          (mkdir haskell-emacs-dir t))))
@@ -118,11 +122,16 @@ Call `haskell-emacs-help' to read the documentation."
     (haskell-emacs--set-bin)
     (haskell-emacs--stop-proc)
     (setq haskell-emacs--response nil)
+
+    ;; Stores addittional functions/modules hash
     (setq haskell-emacs--function-hash
           (with-temp-buffer (mapc 'insert-file-contents funs)
                             (insert haskell-emacs-dir
                                     (format "%S" haskell-emacs-build-tool))
                             (sha1 (buffer-string))))
+
+    ;; Based on the hashes of the API and additional modules
+    ;; determines if a new compile round is needed
     (setq has-changed
           (not (and haskell-emacs--bin
                     (file-exists-p haskell-emacs--bin)
@@ -133,6 +142,8 @@ Call `haskell-emacs-help' to read the documentation."
                            (re-search-forward haskell-emacs--function-hash
                                               nil t))))))
     (when has-changed (haskell-emacs--compile code))
+
+    ;; Starts the support process and lists all exports
     (haskell-emacs--start-proc)
     (setq funs (mapcar (lambda (f) (with-temp-buffer
                                      (insert-file-contents f)
@@ -140,14 +151,19 @@ Call `haskell-emacs-help' to read the documentation."
                        funs)
           docs (apply 'concat funs)
           funs (haskell-emacs--fun-body 'allExports (apply 'list "" "" funs)))
+    ;; If a string, it means the exports failed with an error message
     (when (stringp funs)
       (haskell-emacs--stop-proc)
       (error funs))
+
+    ;; Now, tries to obtain the documentation for each exported function
     (setq docs (haskell-emacs--fun-body
                 'getDocumentation
                 (list (mapcar (lambda (x) (cadr (split-string x "\\.")))
                               (cadr funs))
                       docs)))
+
+    ;; Tries to obtain the arity of each function
     (dotimes (a 2)
       (setq arity-list (haskell-emacs--fun-body 'arityList '()))
       (when has-changed
@@ -171,12 +187,16 @@ Call `haskell-emacs-help' to read the documentation."
                                                (pop docs))))
                          table-of-funs)))
             (cadr funs))
+
+      ;; Creates a map for each function exported by the additional modules
       (maphash (lambda (key value)
                  (with-temp-buffer
                    (let ((buffer-file-name (concat haskell-emacs-dir key ".hs")))
                      (insert value)
                      (eval-buffer))))
                table-of-funs))
+
+    ;; When an additional argument was provided, describes how to run the example
     (when arg
       (if (equal first-time "example")
           (message
