@@ -29,15 +29,18 @@ import           Language.Haskell.Exts            hiding (List, String, Symbol,
 import           Language.Haskell.Exts.SrcLoc
 import qualified Language.Haskell.Exts.Syntax     as S (Name (Ident, Symbol))
 import           System.IO                        (hFlush, stdout)
+import           Data.Typeable
 
-class Arity f where
-  arity :: f -> Int
+-- https://gist.github.com/nushio3/5867066
+arity :: Typeable a => a -> Int
+arity x = go $ typeOf x
+  where
+    go tr
+      | isFun $ typeRepTyCon tr = 1 + go (last $ snd $ splitTyConApp tr)
+      | otherwise               = 0
 
-instance Arity x where
-  arity _ = 0
-
-instance {-# OVERLAPS #-} Arity f => Arity ((->) a f) where
-  arity f = 1 + arity (f undefined)
+    funTyCon = typeRepTyCon $ typeOf ((1+):: Int -> Int)
+    isFun = (funTyCon ==)
 
 data Instruction = EmacsToHaskell Lisp
                  | HaskellToEmacs B.ByteString
