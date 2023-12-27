@@ -368,8 +368,9 @@ cabal-version:       >=1.10
 license:             GPL-2
 executable HaskellEmacs
   main-is:             HaskellEmacs.hs
+  other-modules:       Foreign.Emacs.Internal
   default-language:    Haskell2010
-  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , atto-lisp
                      , parallel
