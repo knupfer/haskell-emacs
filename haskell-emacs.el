@@ -425,7 +425,7 @@ packages:
 - '.'
 extra-deps:
 - github: francesquini/atto-lisp
-  commit: 756aca2d8bdf7264cae3d55b34a1e921f57b4a87
+  commit: 5d740f86889648981b845e56b1a3496521899c81
 ")
                               (write-file (concat haskell-emacs-dir "stack.yaml"))))
                           (message "Compiling ...")
