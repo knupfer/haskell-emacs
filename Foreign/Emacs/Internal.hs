@@ -5,7 +5,6 @@
 
 module Foreign.Emacs.Internal where
 
-import           Control.Applicative
 import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Monad.Trans
@@ -13,7 +12,6 @@ import           Control.Monad.Trans.Reader
 import           Data.AttoLisp
 import qualified Data.ByteString.Lazy.Char8 as B hiding (length)
 import qualified Data.ByteString.Lazy.UTF8  as B (length)
-import           Data.Monoid                ((<>))
 import           Data.Text                  (Text)
 
 class ToEmacs a where
